@@ -2,6 +2,7 @@ import argparse
 import os
 import time
 import torch
+from cat_reid.config import settings
 from cat_reid.input.register import CatRegister
 from cat_reid.input.file import FileInference
 from cat_reid.input.camera import CameraInference
@@ -57,7 +58,7 @@ def main():
 
     elif args.mode == "evaluate":
         if not args.path:
-            args.path = "./heellostreetcat-individuals"
+            args.path = settings.DATASET_PATH
         
         loader = CatDatasetLoader(args.path)
         if args.limit:
@@ -68,7 +69,6 @@ def main():
         print(f"Gallery size: {len(gallery)}, Query size: {len(query)}")
         
         # DB 초기화 및 등록
-        from cat_reid.config import settings
         if os.path.exists(settings.DB_PATH): os.remove(settings.DB_PATH)
         if os.path.exists(settings.LABEL_PATH): os.remove(settings.LABEL_PATH)
         
@@ -83,7 +83,7 @@ def main():
 
     elif args.mode == "train":
         if not args.path:
-            args.path = "./heellostreetcat-individuals"
+            args.path = settings.DATASET_PATH
             
         print(f"Loading dataset for training from {args.path}...")
         loader = CatDatasetLoader(args.path)

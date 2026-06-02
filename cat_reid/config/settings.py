@@ -10,6 +10,7 @@ K = 1            # KNN의 K 값
 
 # 경로 설정
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATASET_PATH = os.path.join(BASE_DIR, "heellostreetcat-individuals")
 DB_PATH = os.path.join(BASE_DIR, "db", "embeddings.npy")
 LABEL_PATH = os.path.join(BASE_DIR, "db", "labels.pkl")
 
