@@ -25,15 +25,13 @@ class CatReIdModel(nn.Module):
             features = self.backbone(x)
         
         embeddings = self.projection(features)
-        # L2 정규화 (Re-ID용)
+        # L2 정규화 (Re-ID용 특징 벡터)
         norm_embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
         
         logits = self.classifier(embeddings)
         return norm_embeddings, logits
 
 def train(model, train_loader, val_loader, epochs=10, lr=1e-3, device='cpu'):
-    criterion = nn.CrossEntropy_with_logits() # Simple baseline: Softmax
-    # Note: For real Re-ID, we'd use Triplet or ArcFace. Using CE for simplicity in 1.5 baseline.
     optimizer = optim.AdamW(model.projection.parameters(), lr=lr)
     
     model.to(device)
@@ -51,7 +49,8 @@ def train(model, train_loader, val_loader, epochs=10, lr=1e-3, device='cpu'):
             
             optimizer.zero_grad()
             _, logits = model(imgs)
-            loss = nn.functional.cross_entropy(logits, labels)
+            # CrossEntropyLoss 사용
+            loss = torch.nn.functional.cross_entropy(logits, labels)
             loss.backward()
             optimizer.step()
             
@@ -80,6 +79,6 @@ def train(model, train_loader, val_loader, epochs=10, lr=1e-3, device='cpu'):
         if val_acc > best_acc:
             best_acc = val_acc
             torch.save(model.projection.state_dict(), "best_projection.pth")
-            print("Saved best model.")
+            print(f"Saved best model with Acc: {val_acc:.2f}%")
 
     return model
