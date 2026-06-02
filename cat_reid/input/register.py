@@ -30,7 +30,7 @@ class CatRegister:
         
         for label in subdirs:
             label_dir = os.path.join(dir_path, label)
-            image_paths = glob.glob(os.path.join(label_dir, "*.*"))
+            image_paths = glob.glob(os.path.join(label_dir, "**", "*.*"), recursive=True)
             
             for img_path in image_paths:
                 if img_path.lower().endswith(('.png', '.jpg', '.jpeg')):
