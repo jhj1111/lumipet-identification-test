@@ -93,7 +93,7 @@ def main():
         train_loader, val_loader = loader.get_train_loaders(batch_size=16, test_size=0.2)
         
         # 모델 준비
-        base_extractor = FeatureExtractor()
+        base_extractor = FeatureExtractor(weights_path=settings.LINEAR_MODEL_PATH)
         model = CatReIdModel(base_extractor, num_classes=len(loader.cat_folders))
         
         device = 'cuda' if torch.cuda.is_available() else 'cpu'

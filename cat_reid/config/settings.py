@@ -13,6 +13,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATASET_PATH = os.path.join(BASE_DIR, "heellostreetcat-individuals")
 DB_PATH = os.path.join(BASE_DIR, "db", "embeddings.npy")
 LABEL_PATH = os.path.join(BASE_DIR, "db", "labels.pkl")
+LINEAR_MODEL_PATH = os.path.join(BASE_DIR, "cat_reid", "models", "best_projection.pth")
 
 # 로깅 설정
 LOG_LEVEL = "INFO"
