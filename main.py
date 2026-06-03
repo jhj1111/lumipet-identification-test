@@ -22,12 +22,13 @@ def main():
     parser.add_argument("--epochs", type=int, default=5, help="학습 에폭 수")
 
     args = parser.parse_args()
+    custom_extractor = FeatureExtractor(weights_path=settings.LINEAR_MODEL_PATH)
 
     if args.mode == "register":
         if not args.path:
             print("Error: --path가 필요합니다.")
             return
-        register = CatRegister()
+        register = CatRegister(extractor=custom_extractor)
         if os.path.isdir(args.path):
             register.register_directory(args.path)
         else:
@@ -41,7 +42,7 @@ def main():
         if not args.path:
             print("Error: --path가 필요합니다.")
             return
-        infer = FileInference()
+        infer = FileInference(extractor=custom_extractor)
         if os.path.isdir(args.path):
             for f in sorted(os.listdir(args.path)):
                 f_path = os.path.join(args.path, f)
@@ -72,12 +73,12 @@ def main():
         if os.path.exists(settings.DB_PATH): os.remove(settings.DB_PATH)
         if os.path.exists(settings.LABEL_PATH): os.remove(settings.LABEL_PATH)
         
-        register = CatRegister()
+        register = CatRegister(extractor=custom_extractor)
         for img_path, label in gallery:
             register.register_image(img_path, label)
         register.store.save()
         
-        infer = FileInference()
+        infer = FileInference(extractor=custom_extractor)
         evaluator = Evaluator(infer)
         evaluator.evaluate(query)
 
@@ -94,7 +95,7 @@ def main():
         
         # 모델 준비
         base_extractor = FeatureExtractor(weights_path=settings.LINEAR_MODEL_PATH)
-        model = CatReIdModel(base_extractor, num_classes=len(loader.cat_folders))
+        model = CatReIdModel(custom_extractor, num_classes=len(loader.cat_folders))
         
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         train(model, train_loader, val_loader, epochs=args.epochs, device=device)

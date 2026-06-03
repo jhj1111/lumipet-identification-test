@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm import tqdm
 from cat_reid.models.extractor import FeatureExtractor
+from cat_reid.config import settings
 
 class CatReIdModel(nn.Module):
     def __init__(self, base_model, embedding_dim=512, num_classes=69):
@@ -78,7 +79,7 @@ def train(model, train_loader, val_loader, epochs=10, lr=1e-3, device='cpu'):
         
         if val_acc > best_acc:
             best_acc = val_acc
-            torch.save(model.projection.state_dict(), "best_projection.pth")
-            print(f"Saved best model with Acc: {val_acc:.2f}%")
+            torch.save(model.projection.state_dict(), settings.LINEAR_MODEL_PATH)
+            print(f"Saved best model to {settings.LINEAR_MODEL_PATH} with Acc: {val_acc:.2f}%")
 
     return model

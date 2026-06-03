@@ -6,14 +6,14 @@ INPUT_SIZE = (384, 384)
 
 # Re-ID 설정
 THRESHOLD = 0.7  # 동일 개체 판별 임계값
-K = 1            # KNN의 K 값
+K = 2            # KNN의 K 값
 
 # 경로 설정
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATASET_PATH = os.path.join(BASE_DIR, "heellostreetcat-individuals")
+DATASET_PATH = os.path.join(BASE_DIR, "../heellostreetcat-individuals")
 DB_PATH = os.path.join(BASE_DIR, "db", "embeddings.npy")
 LABEL_PATH = os.path.join(BASE_DIR, "db", "labels.pkl")
-LINEAR_MODEL_PATH = os.path.join(BASE_DIR, "cat_reid", "models", "best_projection.pth")
+LINEAR_MODEL_PATH = os.path.join(BASE_DIR, "models", "best_projection.pth")
 
 # 로깅 설정
 LOG_LEVEL = "INFO"
