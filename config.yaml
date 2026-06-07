@@ -1,0 +1,22 @@
+# Default configuration for Lumipet Re-ID
+
+# Model Weights
+detector_weights: "yolov8n.pt"
+extractor_weights: "weights/best_projection.pth"
+
+# Model Settings
+model_name: "hf-hub:BVRA/MegaDescriptor-L-384"
+imgsz: 384
+conf: 0.25
+
+# Re-ID Settings
+matcher_type: "faiss"  # "faiss" or "knn"
+threshold: 0.7
+k: 2
+
+# DB Paths
+db_path: "embeddings/db.npz"
+dataset_path: "heellostreetcat-individuals"
+
+# Device
+device: "cuda"  # set to "cpu" if no GPU

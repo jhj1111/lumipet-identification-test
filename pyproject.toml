@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lumipet-reid"
+version = "1.0.0"
+description = "Lumipet Cat Re-ID System"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "torch",
+    "torchvision",
+    "ultralytics",
+    "timm",
+    "faiss-cpu",
+    "pyyaml",
+    "numpy",
+    "opencv-python",
+    "pillow",
+    "scikit-learn"
+]
+
+[project.scripts]
+reid = "reid.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["reid*"]
