@@ -67,6 +67,14 @@ class ExtractorModel(BaseModel):
         predictor.setup_model(self.model)
         return predictor
 
+    def _get_trainer(self, **kwargs):
+        from reid.models.extractor.train import ExtractorTrainer
+        return ExtractorTrainer()
+
+    def _get_validator(self, **kwargs):
+        from reid.models.extractor.val import ExtractorValidator
+        return ExtractorValidator()
+
     def register(self, image: Any, label: str):
         """
         Extract embedding and save to store.

@@ -1,7 +1,7 @@
 # Default configuration for Lumipet Re-ID
 
 # Model Weights
-detector_weights: "yolov8n.pt"
+detector_weights: "weights/yolov8n.pt"
 extractor_weights: "weights/best_projection.pth"
 
 # Model Settings

@@ -1,4 +1,5 @@
 from typing import Any, Union
+from pathlib import Path
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -17,8 +18,11 @@ class ExtractorPredictor(BasePredictor):
 
     def preprocess(self, im: Any) -> torch.Tensor:
         """Convert image to tensor and apply transforms."""
-        if isinstance(im, np.ndarray):
+        if isinstance(im, (str, Path)):
+            im = Image.open(im).convert('RGB')
+        elif isinstance(im, np.ndarray):
             im = Image.fromarray(im)
+            
         if isinstance(im, Image.Image):
             im = self.transform(im)
         
