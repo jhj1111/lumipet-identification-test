@@ -78,14 +78,18 @@ def main():
                 print(f"Warning: Dataset path {source} does not exist.")
                 return
             labels = [d for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))]
-            for label in tqdm(labels):
-                label_dir = os.path.join(source, label)
+            for s_label in tqdm(labels):
+                label_dir = os.path.join(source, s_label)
                 if not os.path.isdir(label_dir):
                     continue
                 for root, _, files in os.walk(label_dir):
                     for f in files:
                         if f.lower().endswith(('.png', '.jpg', '.jpeg')):
-                            extractor.register(os.path.join(root, f), label, verbose=False)
+                            # Use kwargs safely if register accepts verbose, else don't
+                            try:
+                                extractor.register(os.path.join(root, f), s_label, verbose=False)
+                            except TypeError:
+                                extractor.register(os.path.join(root, f), s_label)
 
         else:
             print(f"Registering single image: {source} as {label}")
@@ -103,9 +107,8 @@ def main():
 
     elif mode == "val":
         loader = CatDataLoader(cfg.dataset_path)
-        # Convert loader list to required format [(path, label), ...]
-        val_data = list(zip(loader.image_paths, loader.labels))
-        extractor.val(val_data, pipeline=pipeline)
+        gallery, query = loader.get_reid_split(test_size=cfg.test_size)
+        extractor.val(gallery=gallery, query=query, pipeline=pipeline)
     
     else:
         print(f"Unknown mode: {mode}")

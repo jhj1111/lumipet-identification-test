@@ -44,7 +44,7 @@ class CatDataLoader:
         image_paths = []
         labels = []
         
-        # Structure: dataset_path/label/*.jpg
+        # Structure: dataset_path/label/**/*.jpg
         if not os.path.exists(self.dataset_path):
             print(f"Warning: Dataset path {self.dataset_path} does not exist.")
             return [], []
@@ -77,3 +77,25 @@ class CatDataLoader:
         val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
         
         return train_loader, val_loader
+
+    def get_reid_split(self, test_size=0.5):
+        """
+        Splits data into gallery (for registration) and query (for validation testing).
+        Ensures at least 1 image per identity is in the gallery.
+        """
+        gallery_data = []
+        query_data = []
+        
+        unique_labels = sorted(list(set(self.labels)))
+        for label in unique_labels:
+            cat_paths = [p for p, l in zip(self.image_paths, self.labels) if l == label]
+            if len(cat_paths) < 2:
+                # If only 1 image, put it in gallery so we at least know the cat exists
+                gallery_data.append((cat_paths[0], label))
+                continue
+                
+            g, q = train_test_split(cat_paths, test_size=test_size, random_state=42)
+            gallery_data.extend([(p, label) for p in g])
+            query_data.extend([(p, label) for p in q])
+            
+        return gallery_data, query_data

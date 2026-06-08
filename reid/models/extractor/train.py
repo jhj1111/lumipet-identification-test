@@ -8,8 +8,24 @@ class ExtractorTrainer(BaseTrainer):
     """
     Trainer for the Extractor (Projection layer fine-tuning).
     """
-    def train(self, model_instance, train_loader, val_loader, epochs=5, lr=1e-3):
-        device = model_instance.predictor.device if hasattr(model_instance, 'predictor') else 'cpu'
+    def train(self, data=None, **kwargs):
+        """
+        data: train_loader
+        kwargs['val_loader']: validation loader
+        kwargs['model_instance']: The ExtractorModel instance
+        kwargs['epochs']: number of epochs
+        kwargs['lr']: learning rate
+        """
+        train_loader = data
+        val_loader = kwargs.get('val_loader')
+        model_instance = kwargs.get('model_instance')
+        epochs = kwargs.get('epochs', 5)
+        lr = kwargs.get('lr', 1e-3)
+        
+        if train_loader is None or val_loader is None or model_instance is None:
+            raise ValueError("train_loader, val_loader, and model_instance are required for training.")
+
+        device = model_instance.predictor.device if hasattr(model_instance, 'predictor') and model_instance.predictor else 'cpu'
         model = model_instance.model
         
         # Classifier layer for training (not used during inference)

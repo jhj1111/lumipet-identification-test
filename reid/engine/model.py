@@ -31,17 +31,18 @@ class BaseModel(ABC):
         """Return an instance of a task-specific Predictor."""
         pass
 
-    def train(self, data: Any, **kwargs):
+    def train(self, data: Any = None, **kwargs):
         """Start training using the assigned trainer."""
         if self.trainer is None:
             self.trainer = self._get_trainer(**kwargs)
+        kwargs['model_instance'] = self
         return self.trainer.train(data, **kwargs)
 
     def _get_trainer(self, **kwargs):
         """Return an instance of a task-specific Trainer."""
         raise NotImplementedError("Trainer not implemented for this model.")
 
-    def val(self, data: Any, **kwargs):
+    def val(self, data: Any = None, **kwargs):
         """Start validation using the assigned validator."""
         if self.validator is None:
             self.validator = self._get_validator(**kwargs)

@@ -7,7 +7,7 @@ class BaseTrainer(ABC):
         self.cfg = config
 
     @abstractmethod
-    def train(self, data: Any, **kwargs):
+    def train(self, data: Any = None, **kwargs):
         pass
 
 class BaseValidator(ABC):
@@ -16,5 +16,5 @@ class BaseValidator(ABC):
         self.cfg = config
 
     @abstractmethod
-    def validate(self, data: Any, **kwargs):
+    def validate(self, data: Any = None, **kwargs):
         pass

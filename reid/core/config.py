@@ -20,6 +20,7 @@ class Config:
     matcher_type: str = "faiss"  # "faiss" or "knn"
     threshold: float = 0.7
     k: int = 2
+    test_size: float = 0.5  # Ratio for validation split
     
     # DB Paths
     db_path: str = "embeddings/db.npz"
