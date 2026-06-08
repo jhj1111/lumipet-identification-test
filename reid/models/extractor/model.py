@@ -75,13 +75,13 @@ class ExtractorModel(BaseModel):
         from reid.models.extractor.val import ExtractorValidator
         return ExtractorValidator()
 
-    def register(self, image: Any, label: str):
+    def register(self, image: Any, label: str, verbose: bool = True):
         """
         Extract embedding and save to store.
         """
         embedding = self.predict(image)
         self.store.add(embedding, label)
-        print(f"Registered cat: {label}")
+        if verbose : print(f"Registered cat: {label}")
 
     def save_db(self):
         """Save the embedding store to disk."""

@@ -16,7 +16,7 @@ k: 2
 
 # DB Paths
 db_path: "embeddings/db.npz"
-dataset_path: "heellostreetcat-individuals"
+dataset_path: "datasets/heellostreetcat-individuals"
 
 # Device
 device: "cuda"  # set to "cpu" if no GPU

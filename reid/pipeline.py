@@ -35,11 +35,12 @@ class ReIdPredictor(BasePredictor):
         """
         # 1. Detection
         results = self.detector_predictor(im) # Returns Results object
+        img_pixels = results.orig_img # Always a numpy array after detection
         
         # 2 & 3. Extraction & Matching
         all_embeddings = []
         for box in results.boxes:
-            crop = box.crop(im)
+            crop = box.crop(img_pixels)
             if crop.size == 0:
                 continue
                 

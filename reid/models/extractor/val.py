@@ -7,16 +7,21 @@ class ExtractorValidator(BaseValidator):
     """
     Validator for Re-ID performance (Accuracy & Latency).
     """
-    def validate(self, pipeline, val_data):
+    def validate(self, data, **kwargs):
         """
-        val_data: [(img_path, true_label), ...]
+        data: [(img_path, true_label), ...]
+        kwargs['pipeline']: The ReIdModel instance to use for prediction.
         """
+        pipeline = kwargs.get('pipeline')
+        if pipeline is None:
+            raise ValueError("Pipeline instance is required for validation.")
+            
         correct = 0
-        total = len(val_data)
+        total = len(data)
         latencies = []
         
         print(f"Validating on {total} images...")
-        for img_path, true_label in tqdm(val_data):
+        for img_path, true_label in tqdm(data):
             start_time = time.time()
             
             # Use the pipeline to predict

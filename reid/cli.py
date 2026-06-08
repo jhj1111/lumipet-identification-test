@@ -1,5 +1,8 @@
 import sys
 import os
+
+from tqdm import tqdm
+
 from reid.core.config import get_config
 from reid.container import build_detector, build_extractor, build_matcher
 from reid.pipeline import ReIdModel
@@ -19,8 +22,6 @@ def main():
     pipeline = ReIdModel(detector, extractor, matcher)
     
     # 4. Improved CLI Argument Parsing
-    # Usage: reid mode=predict source=0
-    #        reid mode=register source=path/to/cat_imgs label=my_cat
     mode = "predict"
     source = None
     label = "Unknown"
@@ -33,25 +34,37 @@ def main():
     else:
         remaining_args = sys.argv[1:]
 
-    # Parse key=value and handle shorthand for register
+    # Parse key=value and handle positional arguments
+    skip_next = False
     for i, arg in enumerate(remaining_args):
+        if skip_next:
+            skip_next = False
+            continue
+            
         if "=" in arg:
             k, v = arg.split("=", 1)
             args_dict[k] = v
         else:
-            # Handle positional label/source if not using key=value
+            # Handle keywords used as flags followed by values
+            if arg in ["source", "label", "mode"]:
+                if i + 1 < len(remaining_args):
+                    args_dict[arg] = remaining_args[i+1]
+                    skip_next = True
+                continue
+                
+            # Fallback to pure positional based on mode
             if mode == "register":
                 if source is None: source = arg
                 elif label == "Unknown": label = arg
 
-    # Apply parsed values
+    # Apply parsed values (priority: args_dict > positional > defaults)
     mode = args_dict.get("mode", mode)
     source = args_dict.get("source", source)
     label = args_dict.get("label", label)
     
     # Defaults
-    if source is None: source = 0 # Camera 0
-    if source.isdigit(): source = int(source)
+    if source is None: source = '0' # Camera 0
+    if isinstance(source, str) and source.isdigit(): source = int(source)
 
     if mode == "predict":
         service = StreamService(pipeline, cfg)
@@ -61,12 +74,19 @@ def main():
         # Bulk or single registration
         if os.path.isdir(str(source)):
             print(f"Bulk registering from directory: {source}")
-            subdirs = [d for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))]
-            for s_label in subdirs:
-                s_dir = os.path.join(source, s_label)
-                for f in os.listdir(s_dir):
-                    if f.lower().endswith(('.png', '.jpg', '.jpeg')):
-                        extractor.register(os.path.join(s_dir, f), s_label)
+            if not os.path.exists(source) :
+                print(f"Warning: Dataset path {source} does not exist.")
+                return
+            labels = [d for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))]
+            for label in tqdm(labels):
+                label_dir = os.path.join(source, label)
+                if not os.path.isdir(label_dir):
+                    continue
+                for root, _, files in os.walk(label_dir):
+                    for f in files:
+                        if f.lower().endswith(('.png', '.jpg', '.jpeg')):
+                            extractor.register(os.path.join(root, f), label, verbose=False)
+
         else:
             print(f"Registering single image: {source} as {label}")
             extractor.register(source, label)
@@ -85,7 +105,7 @@ def main():
         loader = CatDataLoader(cfg.dataset_path)
         # Convert loader list to required format [(path, label), ...]
         val_data = list(zip(loader.image_paths, loader.labels))
-        extractor.val(pipeline, val_data)
+        extractor.val(val_data, pipeline=pipeline)
     
     else:
         print(f"Unknown mode: {mode}")
