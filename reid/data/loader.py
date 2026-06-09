@@ -41,6 +41,7 @@ class CatDataLoader:
         self.image_paths, self.labels = self._load_image_list()
 
     def _load_image_list(self):
+        min_data_size = 10
         image_paths = []
         labels = []
         
@@ -55,6 +56,7 @@ class CatDataLoader:
                 continue
                 
             for root, _, files in os.walk(label_dir):
+                if len(files) < min_data_size: continue
                 for f in files:
                     if f.lower().endswith(('.png', '.jpg', '.jpeg')):
                         image_paths.append(os.path.join(root, f))

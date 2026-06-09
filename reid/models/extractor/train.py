@@ -16,7 +16,7 @@ class ExtractorTrainer(BaseTrainer):
         kwargs['epochs']: number of epochs
         kwargs['lr']: learning rate
         """
-        train_loader = data
+        train_loader = kwargs.get('train_loader')
         val_loader = kwargs.get('val_loader')
         model_instance = kwargs.get('model_instance')
         epochs = kwargs.get('epochs', 5)

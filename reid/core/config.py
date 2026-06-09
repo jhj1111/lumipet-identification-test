@@ -20,8 +20,11 @@ class Config:
     matcher_type: str = "faiss"  # "faiss" or "knn"
     threshold: float = 0.7
     k: int = 2
-    test_size: float = 0.5  # Ratio for validation split
-    
+
+    # Train, Val Settings
+    batch_size: int = 16
+    test_size: float = 0.2
+
     # DB Paths
     db_path: str = "embeddings/db.npz"
     dataset_path: str = "datasets"

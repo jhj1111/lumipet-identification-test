@@ -20,3 +20,7 @@ dataset_path: "datasets/heellostreetcat-individuals"
 
 # Device
 device: "cuda"  # set to "cpu" if no GPU
+
+# Train, Val Settings
+batch_size: 16
+test_size: 0.2
