@@ -101,7 +101,7 @@ def main():
         loader = CatDataLoader(cfg.dataset_path)
         train_loader, val_loader = loader.get_loaders(batch_size=cfg.batch_size, test_size=cfg.test_size)
         if train_loader:
-            extractor.train(train_loader=train_loader, val_loader=val_loader)
+            extractor.train(train_loader=train_loader, val_loader=val_loader, **args_dict)
         else:
             print("Error: Could not load training data.")
 

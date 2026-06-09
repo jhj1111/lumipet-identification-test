@@ -24,6 +24,8 @@ class ExtractorModel(BaseModel):
     def _load_model(self, weights: str):
         # 1. Load Backbone
         backbone = timm.create_model(self.model_name, pretrained=True, num_classes=0)
+        for param in backbone.parameters():
+            param.requires_grad = False
         
         # 2. Define Projection Layer
         projection = nn.Sequential(
@@ -55,7 +57,8 @@ class ExtractorModel(BaseModel):
                 self.has_custom_weights = has_custom_weights
             
             def forward(self, x):
-                features = self.backbone(x)
+                with torch.no_grad():
+                    features = self.backbone(x)
                 if self.has_custom_weights:
                     return self.projection(features)
                 return features

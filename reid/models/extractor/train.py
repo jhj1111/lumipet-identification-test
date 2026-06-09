@@ -19,14 +19,31 @@ class ExtractorTrainer(BaseTrainer):
         train_loader = kwargs.get('train_loader')
         val_loader = kwargs.get('val_loader')
         model_instance = kwargs.get('model_instance')
-        epochs = kwargs.get('epochs', 5)
-        lr = kwargs.get('lr', 1e-3)
+        epochs = int(kwargs.get('epochs', 5))
+        lr = float(kwargs.get('lr', 1e-3))
         
         if train_loader is None or val_loader is None or model_instance is None:
             raise ValueError("train_loader, val_loader, and model_instance are required for training.")
 
-        device = model_instance.predictor.device if hasattr(model_instance, 'predictor') and model_instance.predictor else 'cpu'
+        # Determine device: priority is kwargs['device'] -> config -> predictor -> auto-detect
+        device = kwargs.get('device')
+        if not device:
+            if hasattr(model_instance, 'predictor') and model_instance.predictor:
+                device = model_instance.predictor.device
+        if not device:
+            try:
+                from reid.core.config import get_config
+                device = get_config().device
+            except Exception:
+                device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if not device:
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
         model = model_instance.model
+        
+        # Force the model to use the projection layer during training & validation
+        model_instance.has_custom_weights = True
+        model.has_custom_weights = True
         
         # Classifier layer for training (not used during inference)
         num_classes = len(train_loader.dataset.label_to_idx)
@@ -40,6 +57,9 @@ class ExtractorTrainer(BaseTrainer):
 
         for epoch in range(epochs):
             model.train()
+            # Keep the frozen backbone in evaluation mode to maintain BatchNorm stats
+            if hasattr(model, 'backbone'):
+                model.backbone.eval()
             classifier.train()
             
             pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}")
