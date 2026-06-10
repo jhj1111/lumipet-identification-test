@@ -71,7 +71,7 @@ class ExtractorModel(BaseModel):
         return predictor
 
     def _get_trainer(self) -> "ExtractorTrainer":
-        from reid.models.extractor.train import ExtractorTrainer
+        from reid.models.extractor.mega_descriptor.train import ExtractorTrainer
         return ExtractorTrainer(self.cfg, model_instance=self)
 
     def _get_validator(self) -> "ExtractorValidator":

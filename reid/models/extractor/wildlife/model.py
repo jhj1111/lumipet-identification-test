@@ -27,6 +27,13 @@ class WildlifeExtractorModel(BaseModel):
         """Load raw timm backbone and infer features shape dynamically."""
         self.model = timm.create_model(self.model_name, pretrained=True, num_classes=0)
         
+        # Adjust imgsz dynamically based on model's default expected input size
+        if hasattr(self.model, 'default_cfg') and 'input_size' in self.model.default_cfg:
+            model_imgsz = self.model.default_cfg['input_size'][1]
+            if self.cfg.imgsz != model_imgsz:
+                print(f"Info: Adjusting configuration imgsz from {self.cfg.imgsz} to {model_imgsz} to match model requirements.")
+                self.cfg.imgsz = model_imgsz
+        
         # Infer embedding size dynamically using dummy input
         self.model.eval()
         with torch.no_grad():
