@@ -1,6 +1,5 @@
 from reid.core.config import get_config
 from reid.models.yolo.model import YoloModel
-from reid.models.extractor.model import ExtractorModel
 from reid.models.matcher.knn import KnnMatcher
 from reid.models.matcher.faiss import FaissMatcher
 
@@ -10,7 +9,12 @@ def build_detector(cfg=None):
 
 def build_extractor(cfg=None):
     cfg = cfg or get_config()
-    return ExtractorModel(model_path=cfg.extractor_weights, model_name=cfg.model_name)
+    if cfg.extractor_type == "wildlife":
+        from reid.models.extractor.wildlife.model import WildlifeExtractorModel
+        return WildlifeExtractorModel(model_path=cfg.extractor_weights, model_name=cfg.model_name, cfg=cfg)
+    else:
+        from reid.models.extractor.mega_descriptor.model import ExtractorModel
+        return ExtractorModel(model_path=cfg.extractor_weights, model_name=cfg.model_name, cfg=cfg)
 
 def build_matcher(cfg=None):
     cfg = cfg or get_config()
