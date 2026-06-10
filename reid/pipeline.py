@@ -18,7 +18,8 @@ class ReIdPredictor(BasePredictor):
         embeddings, labels = extractor.store.get_all()
         if len(labels) > 0:
             # Check for dimension mismatch
-            dummy_emb = extractor.predict(np.zeros((384, 384, 3), dtype=np.uint8))
+            imgsz = extractor.cfg.imgsz
+            dummy_emb = extractor.predict(np.zeros((imgsz, imgsz, 3), dtype=np.uint8))
             extractor_dim = dummy_emb.shape[0]
             db_dim = embeddings.shape[1]
             if extractor_dim != db_dim:
