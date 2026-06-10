@@ -2,9 +2,7 @@ import torch
 import torch.nn as nn
 import timm
 import os
-from pathlib import Path
-from typing import Any, Optional, Union
-from PIL import Image
+from typing import Any, Optional
 
 from reid.engine.model import BaseModel
 from reid.models.extractor.predict import ExtractorPredictor
@@ -12,30 +10,33 @@ from reid.models.extractor.embedding import EmbeddingStore
 
 class ExtractorModel(BaseModel):
     """
-    Feature Extractor Model using MegaDescriptor.
+    Feature Extractor Model wrapper using MegaDescriptor.
     """
-    def __init__(self, model_path: Optional[str] = "weights/best_projection.pth", 
-                 model_name: str = "hf-hub:BVRA/MegaDescriptor-L-384"):
-        super().__init__(model_path, task="reid")
-        self.model_name = model_name
-        self._load_model(model_path)
-        self.store = EmbeddingStore() # Default store
+    def __init__(self, model_path: Optional[str] = None, model_name: str = None, cfg=None) -> None:
+        # Prioritize cfg params if not explicitly passed
+        from reid.core.config import get_config
+        cfg_inst = cfg or get_config()
+        m_path = model_path or cfg_inst.extractor_weights
+        m_name = model_name or cfg_inst.model_name
+        
+        super().__init__(m_path, task="reid", cfg=cfg_inst)
+        self.model_name = m_name
+        self._load_model(self.model_path)
+        self.store = EmbeddingStore()
 
     def _load_model(self, weights: str):
-        # 1. Load Backbone
         backbone = timm.create_model(self.model_name, pretrained=True, num_classes=0)
         for param in backbone.parameters():
             param.requires_grad = False
         
-        # 2. Define Projection Layer
+        num_features = getattr(backbone, 'num_features', 1536)
         projection = nn.Sequential(
-            nn.Linear(1536, 512),
+            nn.Linear(num_features, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Linear(512, 512)
         )
         
-        # 3. Load weights if available
         if weights and os.path.exists(weights):
             print(f"Loading weights from {weights}")
             try:
@@ -48,7 +49,6 @@ class ExtractorModel(BaseModel):
         else:
             self.has_custom_weights = False
 
-        # 4. Combine into a single module for the Predictor
         class CombinedModel(nn.Module):
             def __init__(self, backbone, projection, has_custom_weights):
                 super().__init__()
@@ -65,27 +65,24 @@ class ExtractorModel(BaseModel):
 
         self.model = CombinedModel(backbone, projection, self.has_custom_weights)
 
-    def _get_predictor(self, **kwargs):
-        predictor = ExtractorPredictor()
+    def _get_predictor(self) -> ExtractorPredictor:
+        predictor = ExtractorPredictor(self.cfg)
         predictor.setup_model(self.model)
         return predictor
 
-    def _get_trainer(self, **kwargs):
+    def _get_trainer(self) -> "ExtractorTrainer":
         from reid.models.extractor.train import ExtractorTrainer
-        return ExtractorTrainer()
+        return ExtractorTrainer(self.cfg, model_instance=self)
 
-    def _get_validator(self, **kwargs):
+    def _get_validator(self) -> "ExtractorValidator":
         from reid.models.extractor.val import ExtractorValidator
-        return ExtractorValidator()
+        return ExtractorValidator(self.cfg)
 
     def register(self, image: Any, label: str, verbose: bool = True):
-        """
-        Extract embedding and save to store.
-        """
         embedding = self.predict(image)
         self.store.add(embedding, label)
-        if verbose : print(f"Registered cat: {label}")
+        if verbose:
+            print(f"Registered cat: {label}")
 
     def save_db(self):
-        """Save the embedding store to disk."""
         self.store.save()

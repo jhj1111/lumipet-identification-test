@@ -1,103 +1,72 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from tqdm import tqdm
 from reid.engine.trainer import BaseTrainer
+from reid.data.loader import CatDataLoader
 
 class ExtractorTrainer(BaseTrainer):
     """
-    Trainer for the Extractor (Projection layer fine-tuning).
+    Trainer implementation for ExtractorModel projection layer fine-tuning.
     """
-    def train(self, data=None, **kwargs):
-        """
-        data: train_loader
-        kwargs['val_loader']: validation loader
-        kwargs['model_instance']: The ExtractorModel instance
-        kwargs['epochs']: number of epochs
-        kwargs['lr']: learning rate
-        """
-        train_loader = kwargs.get('train_loader')
-        val_loader = kwargs.get('val_loader')
-        model_instance = kwargs.get('model_instance')
-        epochs = int(kwargs.get('epochs', 5))
-        lr = float(kwargs.get('lr', 1e-3))
+    def __init__(self, cfg=None, model_instance=None) -> None:
+        super().__init__(cfg)
+        self.model_instance = model_instance
+        self.classifier = None
+
+    def get_model(self) -> nn.Module:
+        """Activate projection weights training flags and return model."""
+        self.model_instance.has_custom_weights = True
+        self.model_instance.model.has_custom_weights = True
+        return self.model_instance.model
+
+    def get_dataloader(self) -> tuple:
+        """Build and return data loaders from dataset_path."""
+        loader = CatDataLoader(self.cfg.dataset_path, imgsz=self.cfg.imgsz)
+        return loader.get_loaders(batch_size=self.cfg.batch_size, test_size=self.cfg.test_size)
+
+    def setup(self) -> None:
+        """Initialize classifier layer and AdamW optimizer."""
+        super().setup()
+        num_classes = len(self.train_loader.dataset.label_to_idx)
+        self.classifier = nn.Linear(512, num_classes).to(self.device)
         
-        if train_loader is None or val_loader is None or model_instance is None:
-            raise ValueError("train_loader, val_loader, and model_instance are required for training.")
+        # Optimize projection parameters + auxiliary classifier parameters
+        self.optimizer = optim.AdamW(
+            list(self.model.projection.parameters()) + list(self.classifier.parameters()),
+            lr=self.cfg.lr
+        )
 
-        # Determine device: priority is kwargs['device'] -> config -> predictor -> auto-detect
-        device = kwargs.get('device')
-        if not device:
-            if hasattr(model_instance, 'predictor') and model_instance.predictor:
-                device = model_instance.predictor.device
-        if not device:
-            try:
-                from reid.core.config import get_config
-                device = get_config().device
-            except Exception:
-                device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        if not device:
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    def compute_loss(self, model_outputs, targets) -> torch.Tensor:
+        """Pass projection features through linear classifier and compute entropy."""
+        logits = self.classifier(model_outputs)
+        return self.criterion(logits, targets)
 
-        model = model_instance.model
-        
-        # Force the model to use the projection layer during training & validation
-        model_instance.has_custom_weights = True
-        model.has_custom_weights = True
-        
-        # Classifier layer for training (not used during inference)
-        num_classes = len(train_loader.dataset.label_to_idx)
-        classifier = nn.Linear(512, num_classes).to(device)
-        
-        optimizer = optim.AdamW(list(model.projection.parameters()) + list(classifier.parameters()), lr=lr)
-        criterion = nn.CrossEntropyLoss()
-
-        model.to(device)
-        best_acc = 0.0
-
-        for epoch in range(epochs):
-            model.train()
-            # Keep the frozen backbone in evaluation mode to maintain BatchNorm stats
-            if hasattr(model, 'backbone'):
-                model.backbone.eval()
-            classifier.train()
-            
-            pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs}")
-            for imgs, labels in pbar:
-                imgs, labels = imgs.to(device), labels.to(device)
-                
-                optimizer.zero_zero_grad() if hasattr(optimizer, 'zero_zero_grad') else optimizer.zero_grad()
-                
-                # Forward
-                embeddings = model(imgs) # CombinedModel returns projected features
-                logits = classifier(embeddings)
-                
-                loss = criterion(logits, labels)
-                loss.backward()
-                optimizer.step()
-                
-                pbar.set_postfix({'loss': loss.item()})
-
-            # Simple Validation
-            val_acc = self.validate(model, classifier, val_loader, device)
-            print(f"Validation Accuracy: {val_acc:.2f}%")
-            
-            if val_acc > best_acc:
-                best_acc = val_acc
-                torch.save(model.projection.state_dict(), model_instance.model_path)
-                print(f"Saved best model weights to {model_instance.model_path}")
+    def pre_epoch_hook(self) -> None:
+        """Maintain frozen backbone in eval mode during training."""
+        if hasattr(self.model, 'backbone'):
+            self.model.backbone.eval()
+        self.classifier.train()
 
     @torch.no_grad()
-    def validate(self, model, classifier, val_loader, device):
-        model.eval()
-        classifier.eval()
+    def validate(self) -> float:
+        """Evaluate current epoch accuracy on validation data."""
+        self.model.eval()
+        self.classifier.eval()
         correct = 0
         total = 0
-        for imgs, labels in val_loader:
-            imgs, labels = imgs.to(device), labels.to(device)
-            embeddings = model(imgs)
-            logits = classifier(embeddings)
+        for imgs, labels in self.val_loader:
+            imgs, labels = imgs.to(self.device), labels.to(self.device)
+            embeddings = self.model(imgs)
+            logits = self.classifier(embeddings)
             _, predicted = logits.max(1)
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
         return 100. * correct / total
+
+    def save_model(self) -> None:
+        """Save projection layer weights checkpoint."""
+        torch.save(self.model.projection.state_dict(), self.get_save_path())
+
+    def get_save_path(self) -> str:
+        """Return weight file save path."""
+        return self.model_instance.model_path

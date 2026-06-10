@@ -1,16 +1,14 @@
-from typing import Any, List
+from typing import Any
 import numpy as np
-import cv2
 from reid.engine.predictor import BasePredictor
 from reid.engine.model import BaseModel
-from reid.core.types import Results, MatchResult
-from reid.core.config import get_config
+from reid.core.types import Results
 
 class ReIdPredictor(BasePredictor):
     """
     Predictor that combines Detection, Feature Extraction, and Matching.
     """
-    def __init__(self, detector, extractor, matcher, config=None):
+    def __init__(self, detector, extractor, matcher, config=None) -> None:
         super().__init__(config)
         self.detector_predictor = detector.predict
         self.extractor_predictor = extractor.predict
@@ -19,6 +17,15 @@ class ReIdPredictor(BasePredictor):
         # Load DB into matcher
         embeddings, labels = extractor.store.get_all()
         if len(labels) > 0:
+            # Check for dimension mismatch
+            dummy_emb = extractor.predict(np.zeros((384, 384, 3), dtype=np.uint8))
+            extractor_dim = dummy_emb.shape[0]
+            db_dim = embeddings.shape[1]
+            if extractor_dim != db_dim:
+                raise ValueError(
+                    f"Database embedding dimension ({db_dim}) does not match extractor output dimension ({extractor_dim}). "
+                    f"Please delete your database file '{extractor.cfg.db_path}' and re-register the cats."
+                )
             self.matcher.fit(embeddings, labels)
         else:
             print("Warning: Embedding database is empty.")
@@ -63,8 +70,8 @@ class ReIdModel(BaseModel):
     """
     Full Re-ID Pipeline Model.
     """
-    def __init__(self, detector, extractor, matcher):
-        super().__init__(task="reid_pipeline")
+    def __init__(self, detector, extractor, matcher, cfg=None) -> None:
+        super().__init__(task="reid_pipeline", cfg=cfg)
         self.detector = detector
         self.extractor = extractor
         self.matcher = matcher
@@ -72,5 +79,5 @@ class ReIdModel(BaseModel):
     def _load_model(self, weights: str):
         pass # Underlying models are already loaded
 
-    def _get_predictor(self, **kwargs):
-        return ReIdPredictor(self.detector, self.extractor, self.matcher)
+    def _get_predictor(self) -> ReIdPredictor:
+        return ReIdPredictor(self.detector, self.extractor, self.matcher, self.cfg)

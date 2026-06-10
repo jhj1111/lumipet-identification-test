@@ -6,14 +6,18 @@ from sklearn.model_selection import train_test_split
 from reid.data.transforms import get_transform
 
 class CatDataset(Dataset):
-    def __init__(self, image_paths, labels, transform=None):
+    def __init__(self, image_paths, labels, transform=None, label_to_idx=None):
         self.image_paths = image_paths
         self.labels = labels
         self.transform = transform
         
         # Label mapping (str -> int)
-        unique_labels = sorted(list(set(labels)))
-        self.label_to_idx = {label: i for i, label in enumerate(unique_labels)}
+        if label_to_idx is not None:
+            self.label_to_idx = label_to_idx
+        else:
+            unique_labels = sorted(list(set(labels)))
+            self.label_to_idx = {label: i for i, label in enumerate(unique_labels)}
+            
         self.idx_to_label = {i: label for label, i in self.label_to_idx.items()}
         self.targets = [self.label_to_idx[l] for l in labels]
 
@@ -39,6 +43,10 @@ class CatDataLoader:
         self.imgsz = imgsz
         self.transform = get_transform(imgsz)
         self.image_paths, self.labels = self._load_image_list()
+        
+        # Build self.label_to_idx on initialization
+        unique_labels = sorted(list(set(self.labels)))
+        self.label_to_idx = {label: i for i, label in enumerate(unique_labels)}
 
     def _load_image_list(self):
         min_data_size = 10
@@ -72,10 +80,10 @@ class CatDataLoader:
             self.image_paths, self.labels, test_size=test_size, stratify=self.labels, random_state=42
         )
         
-        train_ds = CatDataset(train_paths, train_labels, transform=self.transform)
-        val_ds = CatDataset(val_paths, val_labels, transform=self.transform)
+        train_ds = CatDataset(train_paths, train_labels, transform=self.transform, label_to_idx=self.label_to_idx)
+        val_ds = CatDataset(val_paths, val_labels, transform=self.transform, label_to_idx=self.label_to_idx)
         
-        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True)
         val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
         
         return train_loader, val_loader
