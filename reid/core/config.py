@@ -12,6 +12,7 @@ class Config:
     
     # Model Settings
     model_name: str = "hf-hub:BVRA/MegaDescriptor-L-384"
+    extractor_type: str = "mega_descriptor"  # "mega_descriptor" or "wildlife"
     imgsz: int = 384
     conf: float = 0.25
     iou: float = 0.45
@@ -27,6 +28,8 @@ class Config:
     epochs: int = 5
     lr: float = 0.001
     optimizer: str = "AdamW"
+    arcface_margin: float = 0.5
+    arcface_scale: float = 64.0
 
     # DB Paths
     db_path: str = "embeddings/db.npz"
