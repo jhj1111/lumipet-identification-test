@@ -18,7 +18,9 @@ dependencies = [
     "numpy",
     "opencv-python",
     "pillow",
-    "scikit-learn"
+    "scikit-learn",
+    "pytorch-metric-learning",
+    "wildlife-tools @ git+https://github.com/WildlifeDatasets/wildlife-tools.git"
 ]
 
 [project.scripts]

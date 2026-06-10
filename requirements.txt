@@ -56,3 +56,5 @@ tqdm==4.67.3
 triton==3.7.0
 typer==0.25.1
 typing_extensions==4.15.0
+pytorch-metric-learning==2.9.0
+wildlife-tools @ git+https://github.com/WildlifeDatasets/wildlife-tools.git
