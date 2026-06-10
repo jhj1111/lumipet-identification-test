@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 import numpy as np
 from reid.engine.predictor import BasePredictor
 from reid.engine.model import BaseModel
@@ -8,7 +8,7 @@ class ReIdPredictor(BasePredictor):
     """
     Predictor that combines Detection, Feature Extraction, and Matching.
     """
-    def __init__(self, detector, extractor, matcher, config=None) -> None:
+    def __init__(self, detector: Any, extractor: Any, matcher: Any, config: Optional[Any] = None) -> None:
         super().__init__(config)
         self.detector_predictor = detector.predict
         self.extractor_predictor = extractor.predict
@@ -31,20 +31,13 @@ class ReIdPredictor(BasePredictor):
             print("Warning: Embedding database is empty.")
 
     def preprocess(self, im: Any) -> Any:
-        # Input to pipeline is the original image
         return im
 
     def inference(self, im: Any) -> Results:
-        """
-        1. Detect cats
-        2. For each cat, extract embedding
-        3. Match embedding against DB
-        """
-        # 1. Detection
-        results = self.detector_predictor(im) # Returns Results object
-        img_pixels = results.orig_img # Always a numpy array after detection
+        """Detect bounding boxes, extract features, and compare with database."""
+        results = self.detector_predictor(im)
+        img_pixels = results.orig_img
         
-        # 2 & 3. Extraction & Matching
         all_embeddings = []
         for box in results.boxes:
             crop = box.crop(img_pixels)
@@ -63,21 +56,21 @@ class ReIdPredictor(BasePredictor):
         return results
 
     def postprocess(self, preds: Any, img: Any, orig_img: Any) -> Results:
-        # Inference already returns the Results object
         return preds
+
 
 class ReIdModel(BaseModel):
     """
     Full Re-ID Pipeline Model.
     """
-    def __init__(self, detector, extractor, matcher, cfg=None) -> None:
+    def __init__(self, detector: Any, extractor: Any, matcher: Any, cfg: Optional[Any] = None) -> None:
         super().__init__(task="reid_pipeline", cfg=cfg)
         self.detector = detector
         self.extractor = extractor
         self.matcher = matcher
 
-    def _load_model(self, weights: str):
-        pass # Underlying models are already loaded
+    def _load_model(self, weights: str) -> None:
+        pass
 
     def _get_predictor(self) -> ReIdPredictor:
         return ReIdPredictor(self.detector, self.extractor, self.matcher, self.cfg)
