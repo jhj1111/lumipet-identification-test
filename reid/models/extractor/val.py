@@ -1,3 +1,4 @@
+from typing import Optional, Any
 import time
 import numpy as np
 from tqdm import tqdm
@@ -8,7 +9,7 @@ class ExtractorValidator(BaseValidator):
     """
     Validator for Re-ID performance (Accuracy & Latency) using Dynamic Split.
     """
-    def validate(self, pipeline=None) -> dict:
+    def validate(self, pipeline: Optional[Any] = None) -> dict:
         """
         Validate dynamic gallery/query split accuracy.
         """

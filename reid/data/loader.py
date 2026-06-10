@@ -1,3 +1,4 @@
+from typing import List, Tuple, Dict, Any, Optional
 import os
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -6,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from reid.data.transforms import get_transform
 
 class CatDataset(Dataset):
-    def __init__(self, image_paths, labels, transform=None, label_to_idx=None):
+    def __init__(self, image_paths: List[str], labels: List[str], transform: Optional[Any] = None, label_to_idx: Optional[Dict[str, int]] = None) -> None:
         self.image_paths = image_paths
         self.labels = labels
         self.transform = transform
@@ -21,10 +22,10 @@ class CatDataset(Dataset):
         self.idx_to_label = {i: label for label, i in self.label_to_idx.items()}
         self.targets = [self.label_to_idx[l] for l in labels]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.image_paths)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
         img_path = self.image_paths[idx]
         label = self.targets[idx]
         
@@ -38,7 +39,7 @@ class CatDataLoader:
     """
     Handles dataset loading, splitting, and DataLoader creation.
     """
-    def __init__(self, dataset_path, imgsz=384):
+    def __init__(self, dataset_path: str, imgsz: int = 384) -> None:
         self.dataset_path = dataset_path
         self.imgsz = imgsz
         self.transform = get_transform(imgsz)
@@ -48,7 +49,7 @@ class CatDataLoader:
         unique_labels = sorted(list(set(self.labels)))
         self.label_to_idx = {label: i for i, label in enumerate(unique_labels)}
 
-    def _load_image_list(self):
+    def _load_image_list(self) -> Tuple[List[str], List[str]]:
         min_data_size = 10
         image_paths = []
         labels = []
@@ -72,7 +73,7 @@ class CatDataLoader:
         
         return image_paths, labels
 
-    def get_loaders(self, batch_size=16, test_size=0.2):
+    def get_loaders(self, batch_size: int = 16, test_size: float = 0.2) -> Tuple[Optional[DataLoader], Optional[DataLoader]]:
         if not self.image_paths:
             return None, None
             
@@ -88,7 +89,7 @@ class CatDataLoader:
         
         return train_loader, val_loader
 
-    def get_reid_split(self, test_size=0.5):
+    def get_reid_split(self, test_size: float = 0.5) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
         """
         Splits data into gallery (for registration) and query (for validation testing).
         Ensures at least 1 image per identity is in the gallery.

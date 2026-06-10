@@ -1,3 +1,4 @@
+from typing import Optional, Any
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -8,7 +9,7 @@ class ExtractorTrainer(BaseTrainer):
     """
     Trainer implementation for ExtractorModel projection layer fine-tuning.
     """
-    def __init__(self, cfg=None, model_instance=None) -> None:
+    def __init__(self, cfg: Optional[Any] = None, model_instance: Optional[Any] = None) -> None:
         super().__init__(cfg)
         self.model_instance = model_instance
         self.classifier = None
@@ -36,7 +37,7 @@ class ExtractorTrainer(BaseTrainer):
             lr=self.cfg.lr
         )
 
-    def compute_loss(self, model_outputs, targets) -> torch.Tensor:
+    def compute_loss(self, model_outputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """Pass projection features through linear classifier and compute entropy."""
         logits = self.classifier(model_outputs)
         return self.criterion(logits, targets)
