@@ -34,6 +34,11 @@ class BasePredictor(ABC):
         """Perform predictions on single input or stream loader sources."""
         import os
 
+        # Reset cache/state if the subclass supports it (e.g. ReIdPredictor)
+        if hasattr(self, "reset"):
+            self.reset()
+
+
         # Check if the source is a single image file path
         is_image_file = False
         if isinstance(source, (str, Path)):

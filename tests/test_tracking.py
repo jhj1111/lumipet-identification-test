@@ -224,3 +224,22 @@ def test_reid_predictor_caching():
     assert extractor.predict.call_count == 1
     assert matcher.match.call_count == 1
     assert res2.match_results[0].cat_id == "Nabi"
+
+    # 3. Test caching reset
+    predictor.reset()
+    res3 = predictor.inference(orig_img)
+    # Call count should increase (since cache was cleared)
+    assert extractor.predict.call_count == 2
+    assert matcher.match.call_count == 2
+
+    # 4. Test index alignment when crop size is zero (e.g. empty box)
+    empty_box = BBox(x1=0, y1=0, x2=0, y2=0, track_id=12) # crop size 0
+    results_empty = Results(orig_img=orig_img, path="", boxes=[empty_box])
+    detector.predict.return_value = results_empty
+    
+    res_empty = predictor.inference(orig_img)
+    assert len(res_empty.boxes) == 1
+    assert len(res_empty.match_results) == 1
+    assert res_empty.match_results[0].cat_id == "Unknown"
+    assert res_empty.match_results[0].similarity == 0.0
+

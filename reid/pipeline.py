@@ -2,7 +2,7 @@ from typing import Any, Optional
 import numpy as np
 from reid.engine.predictor import BasePredictor
 from reid.engine.model import BaseModel
-from reid.core.types import Results
+from reid.core.types import Results, MatchResult
 from reid.core.tracker import TrackStateManager
 
 class ReIdPredictor(BasePredictor):
@@ -33,6 +33,10 @@ class ReIdPredictor(BasePredictor):
         else:
             print("Warning: Embedding database is empty.")
 
+    def reset(self) -> None:
+        """Reset the track state cache."""
+        self.track_state_manager.tracks.clear()
+
     def preprocess(self, im: Any) -> Any:
         return im
 
@@ -56,6 +60,8 @@ class ReIdPredictor(BasePredictor):
             # Crop and predict if cache miss
             crop = box.crop(img_pixels)
             if crop.size == 0:
+                # Maintain alignment with results.boxes by appending an Unknown MatchResult
+                results.match_results.append(MatchResult(cat_id="Unknown", similarity=0.0, is_known=False))
                 continue
                 
             embedding = self.extractor_predictor(crop)
@@ -74,6 +80,7 @@ class ReIdPredictor(BasePredictor):
 
     def postprocess(self, preds: Any, img: Any, orig_img: Any) -> Results:
         return preds
+
 
 
 
