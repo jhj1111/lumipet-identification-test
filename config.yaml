@@ -18,8 +18,11 @@ k: 2
 db_path: "embeddings/db.npz"
 dataset_path: "datasets/heellostreetcat-individuals"
 
-# Device
-device: "cuda"  # set to "cpu" if no GPU
+# Run Settings
+dev: True
+track: True
+tracker: "bytetrack.yaml"
+device: "cuda"
 
 # Train, Val Settings
 batch_size: 16

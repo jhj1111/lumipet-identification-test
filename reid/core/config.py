@@ -39,6 +39,9 @@ class Config:
     device: str = "cuda" # or "cpu"
     save: bool = False
     show: bool = True
+    dev: bool = True
+    track: bool = True
+    tracker: str = "bytetrack.yaml"
     
     # CLI Task Controls
     mode: str = "predict"
