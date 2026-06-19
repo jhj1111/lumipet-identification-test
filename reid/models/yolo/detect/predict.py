@@ -10,13 +10,13 @@ class YoloPredictor(BasePredictor):
         return im
 
     def inference(self, im: Any) -> Any:
-        if getattr(self.cfg, 'track', False):
+        if self.cfg.track:
             return self.model.track(
                 im,
                 conf=self.cfg.conf,
                 iou=self.cfg.iou,
                 persist=True,
-                tracker=getattr(self.cfg, 'tracker', 'bytetrack.yaml'),
+                tracker=self.cfg.tracker,
                 verbose=False
             )
         else:
@@ -27,8 +27,11 @@ class YoloPredictor(BasePredictor):
         ultra_res = preds[0]
         results = Results(orig_img=ultra_res.orig_img, path=ultra_res.path)
         
-        for box in ultra_res.boxes:
-            b = box.xyxy[0].cpu().numpy()
+        # Optimize CPU transfers by copying all boxes to CPU at once
+        cpu_boxes = ultra_res.boxes.cpu() if hasattr(ultra_res.boxes, 'cpu') else ultra_res.boxes
+        
+        for box in cpu_boxes:
+            b = box.xyxy[0].numpy() if hasattr(box.xyxy[0], 'numpy') else box.xyxy[0]
             track_id = int(box.id[0].item()) if box.id is not None else None
             bbox = BBox(
                 x1=float(b[0]), y1=float(b[1]), 
@@ -40,3 +43,4 @@ class YoloPredictor(BasePredictor):
             results.boxes.append(bbox)
             
         return results
+
