@@ -12,6 +12,7 @@ class BBox:
     y2: float
     conf: float = 1.0
     cls: int = 0
+    track_id: Optional[int] = None
 
     def to_list(self) -> List[float]:
         return [self.x1, self.y1, self.x2, self.y2, self.conf, self.cls]

@@ -10,7 +10,17 @@ class YoloPredictor(BasePredictor):
         return im
 
     def inference(self, im: Any) -> Any:
-        return self.model(im, conf=self.cfg.conf, iou=self.cfg.iou, verbose=False)
+        if getattr(self.cfg, 'track', False):
+            return self.model.track(
+                im,
+                conf=self.cfg.conf,
+                iou=self.cfg.iou,
+                persist=True,
+                tracker=getattr(self.cfg, 'tracker', 'bytetrack.yaml'),
+                verbose=False
+            )
+        else:
+            return self.model(im, conf=self.cfg.conf, iou=self.cfg.iou, verbose=False)
 
     def postprocess(self, preds: Any, img: Any, orig_img: Any) -> Results:
         """Convert ultralytics Results object to custom Results representation."""
@@ -19,11 +29,13 @@ class YoloPredictor(BasePredictor):
         
         for box in ultra_res.boxes:
             b = box.xyxy[0].cpu().numpy()
+            track_id = int(box.id[0].item()) if box.id is not None else None
             bbox = BBox(
                 x1=float(b[0]), y1=float(b[1]), 
                 x2=float(b[2]), y2=float(b[3]),
                 conf=float(box.conf[0]),
-                cls=int(box.cls[0])
+                cls=int(box.cls[0]),
+                track_id=track_id
             )
             results.boxes.append(bbox)
             
