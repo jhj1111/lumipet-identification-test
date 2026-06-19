@@ -243,3 +243,24 @@ def test_reid_predictor_caching():
     assert res_empty.match_results[0].cat_id == "Unknown"
     assert res_empty.match_results[0].similarity == 0.0
 
+
+def test_renderer_modes():
+    from reid.stream.overlay import Renderer
+    from reid.core.types import Results, BBox, MatchResult
+    import numpy as np
+
+    orig_img = np.zeros((100, 100, 3), dtype=np.uint8)
+    box = BBox(x1=0, y1=0, x2=50, y2=50, track_id=7)
+    match = MatchResult(cat_id="Nabi", similarity=0.92)
+    results = Results(orig_img=orig_img, path="", boxes=[box], match_results=[match])
+
+    # 1. Dev mode: should show ID and similarity
+    renderer_dev = Renderer(dev=True)
+    img_dev = renderer_dev.draw(results)
+    assert img_dev.shape == orig_img.shape
+
+    # 2. Service mode: should show name only
+    renderer_prod = Renderer(dev=False)
+    img_prod = renderer_prod.draw(results)
+    assert img_prod.shape == orig_img.shape
+

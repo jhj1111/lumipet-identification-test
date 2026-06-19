@@ -46,6 +46,11 @@ class BasePredictor(ABC):
             if os.path.isfile(source_str) and source_str.lower().endswith(('.png', '.jpg', '.jpeg')):
                 is_image_file = True
 
+        # Setup resizable display window
+        if self.cfg.show:
+            cv2.namedWindow("Lumipet Re-ID", cv2.WINDOW_NORMAL)
+            cv2.resizeWindow("Lumipet Re-ID", 1280, 720)
+
         # Execute single-frame inference if input is raw image pixels or a single image file path
         if not isinstance(source, (str, Path, int)) or is_image_file:
             if is_image_file:
@@ -139,5 +144,6 @@ class BasePredictor(ABC):
     def draw_overlay(self, results: Any, frame: np.ndarray) -> np.ndarray:
         """Render detections and classifications using overlay Renderer."""
         from reid.stream.overlay import Renderer
-        renderer = Renderer()
+        dev_mode = getattr(self.cfg, 'dev', True)
+        renderer = Renderer(dev=dev_mode)
         return renderer.draw(results)
