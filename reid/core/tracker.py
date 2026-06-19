@@ -1,0 +1,41 @@
+from typing import Dict, List, Tuple, Optional
+import numpy as np
+from reid.core.types import MatchResult
+
+class TrackState:
+    """Manages the state and history of an individual tracked object."""
+    def __init__(self, track_id: int):
+        self.track_id = track_id
+        self.embeddings: List[np.ndarray] = []
+        self.match_result: Optional[MatchResult] = None
+        self.frame_count = 0
+        
+    def add_observation(self, embedding: np.ndarray, match_res: MatchResult):
+        self.embeddings.append(embedding)
+        self.match_result = match_res
+        self.frame_count += 1
+
+class TrackStateManager:
+    """Manages states of all tracks and handles eviction strategies."""
+    def __init__(self, max_tracks: int = 1000):
+        self.tracks: Dict[int, TrackState] = {}
+        self.max_tracks = max_tracks
+
+    def get_match(self, track_id: int) -> Optional[Tuple[np.ndarray, MatchResult]]:
+        """Return cached embedding and MatchResult if present."""
+        if track_id in self.tracks and self.tracks[track_id].match_result is not None:
+            state = self.tracks[track_id]
+            return state.embeddings[-1], state.match_result
+        return None
+
+    def update_track(self, track_id: int, embedding: np.ndarray, match_res: MatchResult):
+        """Update track state. Evicts oldest track using FIFO if limit is reached."""
+        # TODO: Currently uses a simple FIFO strategy. May need improvement (e.g. LRU or active tracks check) in the future.
+        if len(self.tracks) >= self.max_tracks:
+            first_key = next(iter(self.tracks))
+            self.tracks.pop(first_key)
+            
+        if track_id not in self.tracks:
+            self.tracks[track_id] = TrackState(track_id)
+            
+        self.tracks[track_id].add_observation(embedding, match_res)

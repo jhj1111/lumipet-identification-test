@@ -127,5 +127,35 @@ def test_yolo_predictor_tracking():
     assert results_no_track.boxes[0].track_id is None
 
 
+def test_track_state_manager():
+    from reid.core.tracker import TrackStateManager
+    from reid.core.types import MatchResult
+    import numpy as np
 
+    manager = TrackStateManager(max_tracks=2)
+    match_res1 = MatchResult(cat_id="Nabi", similarity=0.85)
+    emb1 = np.ones(512)
 
+    # 1. Test update and hit
+    manager.update_track(1, emb1, match_res1)
+    cached = manager.get_match(1)
+    assert cached is not None
+    assert np.array_equal(cached[0], emb1)
+    assert cached[1].cat_id == "Nabi"
+
+    # 2. Test cache miss
+    assert manager.get_match(99) is None
+
+    # 3. Test FIFO eviction
+    match_res2 = MatchResult(cat_id="Mimi", similarity=0.90)
+    emb2 = np.ones(512) * 2
+    manager.update_track(2, emb2, match_res2)
+    
+    match_res3 = MatchResult(cat_id="Lulu", similarity=0.88)
+    emb3 = np.ones(512) * 3
+    manager.update_track(3, emb3, match_res3)
+
+    # Track 1 (oldest) should be evicted
+    assert manager.get_match(1) is None
+    assert manager.get_match(2) is not None
+    assert manager.get_match(3) is not None
