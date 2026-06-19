@@ -18,6 +18,8 @@ class BasePredictor(ABC):
         self.device = self.cfg.device
         self.model = None
         self.video_writer = None
+        self.fps_ema = None
+
 
     def setup_model(self, model: Any) -> None:
         """Bind model to device and configure eval mode."""
@@ -100,10 +102,15 @@ class BasePredictor(ABC):
                 if hasattr(res, 'boxes'):
                     annotated_frame = self.draw_overlay(res, frame)
 
-                    # Add FPS count on top
-                    fps_val = 1.0 / max(time.time() - start_time, 1e-6)
-                    cv2.putText(annotated_frame, f"FPS: {fps_val:.1f}", (10, 30),
+                    # Add FPS count on top (smoothed with EMA)
+                    current_fps = 1.0 / max(time.time() - start_time, 1e-6)
+                    if self.fps_ema is None:
+                        self.fps_ema = current_fps
+                    else:
+                        self.fps_ema = 0.9 * self.fps_ema + 0.1 * current_fps
+                    cv2.putText(annotated_frame, f"FPS: {self.fps_ema:.1f}", (10, 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
 
                     # Display if show=True
                     if self.cfg.show:

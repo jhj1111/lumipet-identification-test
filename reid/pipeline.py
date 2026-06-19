@@ -16,17 +16,19 @@ class ReIdPredictor(BasePredictor):
         self.matcher = matcher
         self.track_state_manager = TrackStateManager()
         
+        # Initialize extractor output dimension
+        imgsz = extractor.cfg.imgsz
+        dummy_emb = extractor.predict(np.zeros((imgsz, imgsz, 3), dtype=np.uint8))
+        self.extractor_dim = dummy_emb.shape[0]
+        
         # Load DB into matcher
         embeddings, labels = extractor.store.get_all()
         if len(labels) > 0:
             # Check for dimension mismatch
-            imgsz = extractor.cfg.imgsz
-            dummy_emb = extractor.predict(np.zeros((imgsz, imgsz, 3), dtype=np.uint8))
-            extractor_dim = dummy_emb.shape[0]
             db_dim = embeddings.shape[1]
-            if extractor_dim != db_dim:
+            if self.extractor_dim != db_dim:
                 raise ValueError(
-                    f"Database embedding dimension ({db_dim}) does not match extractor output dimension ({extractor_dim}). "
+                    f"Database embedding dimension ({db_dim}) does not match extractor output dimension ({self.extractor_dim}). "
                     f"Please delete your database file '{extractor.cfg.db_path}' and re-register the cats."
                 )
             self.matcher.fit(embeddings, labels)
@@ -60,8 +62,9 @@ class ReIdPredictor(BasePredictor):
             # Crop and predict if cache miss
             crop = box.crop(img_pixels)
             if crop.size == 0:
-                # Maintain alignment with results.boxes by appending an Unknown MatchResult
+                # Maintain alignment with results.boxes by appending an Unknown MatchResult and zero embedding
                 results.match_results.append(MatchResult(cat_id="Unknown", similarity=0.0, is_known=False))
+                all_embeddings.append(np.zeros(self.extractor_dim, dtype=np.float32))
                 continue
                 
             embedding = self.extractor_predictor(crop)
@@ -75,6 +78,7 @@ class ReIdPredictor(BasePredictor):
             
         if all_embeddings:
             results.embeddings = np.vstack(all_embeddings)
+
             
         return results
 

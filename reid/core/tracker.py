@@ -25,21 +25,29 @@ class TrackStateManager:
         self.max_tracks = max_tracks
 
     def get_match(self, track_id: int) -> Optional[Tuple[np.ndarray, MatchResult]]:
-        """Return cached embedding and MatchResult if present."""
+        """Return cached embedding and MatchResult if present. Updates LRU order."""
         if track_id in self.tracks and self.tracks[track_id].match_result is not None:
             state = self.tracks[track_id]
+            # LRU update: Pop and re-insert key to move it to the end of insertion order
+            self.tracks.pop(track_id)
+            self.tracks[track_id] = state
             return state.embeddings[-1], state.match_result
         return None
 
     def update_track(self, track_id: int, embedding: np.ndarray, match_res: MatchResult):
-        """Update track state. Evicts oldest track using FIFO if limit is reached."""
-        # TODO: Currently uses a simple FIFO strategy. May need improvement (e.g. LRU or active tracks check) in the future.
+        """Update track state. Evicts least recently used (LRU) track if limit is reached."""
         if track_id not in self.tracks and len(self.tracks) >= self.max_tracks:
+            # Evict the oldest key in insertion order (LRU)
             first_key = next(iter(self.tracks))
             self.tracks.pop(first_key)
             
         if track_id not in self.tracks:
             self.tracks[track_id] = TrackState(track_id)
+        else:
+            # Move key to the end of insertion order (most recently used)
+            state = self.tracks.pop(track_id)
+            self.tracks[track_id] = state
             
         self.tracks[track_id].add_observation(embedding, match_res)
+
 

@@ -148,28 +148,28 @@ def test_track_state_manager():
     # 2. Test cache miss
     assert manager.get_match(99) is None
 
-    # 3. Test FIFO eviction
+    # 3. Test LRU eviction
     match_res2 = MagicMock()
     emb2 = np.ones(512) * 2
     manager.update_track(2, emb2, match_res2)
     
     # 4. Test updating existing track at capacity does NOT trigger eviction
     manager.update_track(2, emb2 * 1.5, match_res2)
-    assert manager.get_match(1) is not None  # Track 1 should NOT be evicted yet
+    assert manager.get_match(1) is not None  # Accessing track 1 makes it most recently used (LRU)
     assert len(manager.tracks) == 2
 
-    # Now add track 3 to trigger eviction of track 1
+    # Now add track 3 to trigger eviction of track 2 (least recently used)
     match_res3 = MagicMock()
     emb3 = np.ones(512) * 3
     manager.update_track(3, emb3, match_res3)
 
-    # Track 1 (oldest) should be evicted
-    assert manager.get_match(1) is None
-    assert manager.get_match(2) is not None
+    # Track 2 should be evicted (as track 1 was accessed and became recently used)
+    assert manager.get_match(2) is None
+    assert manager.get_match(1) is not None
     assert manager.get_match(3) is not None
 
     # 5. Test embedding history is capped to prevent unbounded memory growth
-    state = manager.tracks[2]
+    state = manager.tracks[1]
     # Add observations 20 times
     for i in range(20):
         state.add_observation(np.ones(512) * i, match_res2)
@@ -195,7 +195,10 @@ def test_reid_predictor_caching():
     cfg = Config()
     cfg.track = True
 
+    # 1. Instantiate predictor
     predictor = ReIdPredictor(detector, extractor, matcher, cfg)
+    # Predictor calls extractor.predict once during __init__ to find extractor_dim
+    init_calls = extractor.predict.call_count
 
     # 1st Frame: detector returns box with track_id=5
     box = BBox(x1=0, y1=0, x2=100, y2=100, track_id=5)
@@ -207,9 +210,9 @@ def test_reid_predictor_caching():
     extractor.predict.return_value = np.ones(512)
     matcher.match.return_value = MatchResult(cat_id="Nabi", similarity=0.95)
 
-    # Run 1st inference
+    # Run 1st inference (cache miss)
     res1 = predictor.inference(orig_img)
-    assert extractor.predict.call_count == 1
+    assert extractor.predict.call_count == init_calls + 1
     assert matcher.match.call_count == 1
     assert res1.match_results[0].cat_id == "Nabi"
 
@@ -218,10 +221,10 @@ def test_reid_predictor_caching():
     results_frame2 = Results(orig_img=orig_img, path="", boxes=[box2])
     detector.predict.return_value = results_frame2
 
-    # Run 2nd inference
+    # Run 2nd inference (cache hit)
     res2 = predictor.inference(orig_img)
-    # Call count should still be 1 (skipped on 2nd run due to cache hit)
-    assert extractor.predict.call_count == 1
+    # Call count should still be init_calls + 1 (skipped on 2nd run due to cache hit)
+    assert extractor.predict.call_count == init_calls + 1
     assert matcher.match.call_count == 1
     assert res2.match_results[0].cat_id == "Nabi"
 
@@ -229,8 +232,9 @@ def test_reid_predictor_caching():
     predictor.reset()
     res3 = predictor.inference(orig_img)
     # Call count should increase (since cache was cleared)
-    assert extractor.predict.call_count == 2
+    assert extractor.predict.call_count == init_calls + 2
     assert matcher.match.call_count == 2
+
 
     # 4. Test index alignment when crop size is zero (e.g. empty box)
     empty_box = BBox(x1=0, y1=0, x2=0, y2=0, track_id=12) # crop size 0
@@ -247,6 +251,7 @@ def test_reid_predictor_caching():
 def test_renderer_modes():
     from reid.stream.overlay import Renderer
     from reid.core.types import Results, BBox, MatchResult
+    from unittest.mock import patch, ANY
     import numpy as np
 
     orig_img = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -256,11 +261,22 @@ def test_renderer_modes():
 
     # 1. Dev mode: should show ID and similarity
     renderer_dev = Renderer(dev=True)
-    img_dev = renderer_dev.draw(results)
-    assert img_dev.shape == orig_img.shape
+    with patch("cv2.putText") as mock_put_text, \
+         patch("cv2.rectangle"), \
+         patch("cv2.getTextSize", return_value=((10, 10), 5)):
+        renderer_dev.draw(results)
+        mock_put_text.assert_called_with(
+            ANY, "ID:7 Nabi 0.92", ANY, ANY, ANY, (0, 0, 0), 2
+        )
 
     # 2. Service mode: should show name only
     renderer_prod = Renderer(dev=False)
-    img_prod = renderer_prod.draw(results)
-    assert img_prod.shape == orig_img.shape
+    with patch("cv2.putText") as mock_put_text, \
+         patch("cv2.rectangle"), \
+         patch("cv2.getTextSize", return_value=((10, 10), 5)):
+        renderer_prod.draw(results)
+        mock_put_text.assert_called_with(
+            ANY, "Nabi", ANY, ANY, ANY, (0, 0, 0), 2
+        )
+
 
