@@ -175,3 +175,52 @@ def test_track_state_manager():
         state.add_observation(np.ones(512) * i, match_res2)
     assert len(state.embeddings) <= 10  # Capped at 10
 
+
+def test_reid_predictor_caching():
+    from reid.pipeline import ReIdPredictor
+    from reid.core.types import Results, BBox, MatchResult
+    from reid.core.config import Config
+    from unittest.mock import MagicMock
+
+    # Mock dependencies
+    detector = MagicMock()
+    extractor = MagicMock()
+    matcher = MagicMock()
+
+    # Configure mock database loading
+    extractor.store.get_all.return_value = (np.array([]), [])
+    extractor.cfg.imgsz = 384
+
+    # Define config
+    cfg = Config()
+    cfg.track = True
+
+    predictor = ReIdPredictor(detector, extractor, matcher, cfg)
+
+    # 1st Frame: detector returns box with track_id=5
+    box = BBox(x1=0, y1=0, x2=100, y2=100, track_id=5)
+    orig_img = np.zeros((200, 200, 3), dtype=np.uint8)
+    results_frame1 = Results(orig_img=orig_img, path="", boxes=[box])
+    detector.predict.return_value = results_frame1
+
+    # Mock extractor and matcher output
+    extractor.predict.return_value = np.ones(512)
+    matcher.match.return_value = MatchResult(cat_id="Nabi", similarity=0.95)
+
+    # Run 1st inference
+    res1 = predictor.inference(orig_img)
+    assert extractor.predict.call_count == 1
+    assert matcher.match.call_count == 1
+    assert res1.match_results[0].cat_id == "Nabi"
+
+    # 2nd Frame: detector returns same track_id=5
+    box2 = BBox(x1=10, y1=10, x2=110, y2=110, track_id=5)
+    results_frame2 = Results(orig_img=orig_img, path="", boxes=[box2])
+    detector.predict.return_value = results_frame2
+
+    # Run 2nd inference
+    res2 = predictor.inference(orig_img)
+    # Call count should still be 1 (skipped on 2nd run due to cache hit)
+    assert extractor.predict.call_count == 1
+    assert matcher.match.call_count == 1
+    assert res2.match_results[0].cat_id == "Nabi"

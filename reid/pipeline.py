@@ -3,6 +3,7 @@ import numpy as np
 from reid.engine.predictor import BasePredictor
 from reid.engine.model import BaseModel
 from reid.core.types import Results
+from reid.core.tracker import TrackStateManager
 
 class ReIdPredictor(BasePredictor):
     """
@@ -13,6 +14,7 @@ class ReIdPredictor(BasePredictor):
         self.detector_predictor = detector.predict
         self.extractor_predictor = extractor.predict
         self.matcher = matcher
+        self.track_state_manager = TrackStateManager()
         
         # Load DB into matcher
         embeddings, labels = extractor.store.get_all()
@@ -41,6 +43,17 @@ class ReIdPredictor(BasePredictor):
         
         all_embeddings = []
         for box in results.boxes:
+            track_id = box.track_id
+            
+            # Check cache first
+            cached = self.track_state_manager.get_match(track_id) if track_id is not None else None
+            if cached is not None:
+                embedding, match_res = cached
+                all_embeddings.append(embedding)
+                results.match_results.append(match_res)
+                continue
+                
+            # Crop and predict if cache miss
             crop = box.crop(img_pixels)
             if crop.size == 0:
                 continue
@@ -51,6 +64,9 @@ class ReIdPredictor(BasePredictor):
             match_res = self.matcher.match(embedding)
             results.match_results.append(match_res)
             
+            if track_id is not None:
+                self.track_state_manager.update_track(track_id, embedding, match_res)
+            
         if all_embeddings:
             results.embeddings = np.vstack(all_embeddings)
             
@@ -58,6 +74,7 @@ class ReIdPredictor(BasePredictor):
 
     def postprocess(self, preds: Any, img: Any, orig_img: Any) -> Results:
         return preds
+
 
 
 class ReIdModel(BaseModel):
