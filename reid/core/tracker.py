@@ -12,6 +12,9 @@ class TrackState:
         
     def add_observation(self, embedding: np.ndarray, match_res: MatchResult):
         self.embeddings.append(embedding)
+        # Prevent unbounded memory growth by keeping only the last 10 observations
+        if len(self.embeddings) > 10:
+            self.embeddings.pop(0)
         self.match_result = match_res
         self.frame_count += 1
 
@@ -31,7 +34,7 @@ class TrackStateManager:
     def update_track(self, track_id: int, embedding: np.ndarray, match_res: MatchResult):
         """Update track state. Evicts oldest track using FIFO if limit is reached."""
         # TODO: Currently uses a simple FIFO strategy. May need improvement (e.g. LRU or active tracks check) in the future.
-        if len(self.tracks) >= self.max_tracks:
+        if track_id not in self.tracks and len(self.tracks) >= self.max_tracks:
             first_key = next(iter(self.tracks))
             self.tracks.pop(first_key)
             
@@ -39,3 +42,4 @@ class TrackStateManager:
             self.tracks[track_id] = TrackState(track_id)
             
         self.tracks[track_id].add_observation(embedding, match_res)
+

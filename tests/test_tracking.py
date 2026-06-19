@@ -128,9 +128,11 @@ def test_yolo_predictor_tracking():
 
 
 def test_track_state_manager():
+    from unittest.mock import MagicMock
     from reid.core.tracker import TrackStateManager
     from reid.core.types import MatchResult
     import numpy as np
+
 
     manager = TrackStateManager(max_tracks=2)
     match_res1 = MatchResult(cat_id="Nabi", similarity=0.85)
@@ -147,11 +149,17 @@ def test_track_state_manager():
     assert manager.get_match(99) is None
 
     # 3. Test FIFO eviction
-    match_res2 = MatchResult(cat_id="Mimi", similarity=0.90)
+    match_res2 = MagicMock()
     emb2 = np.ones(512) * 2
     manager.update_track(2, emb2, match_res2)
     
-    match_res3 = MatchResult(cat_id="Lulu", similarity=0.88)
+    # 4. Test updating existing track at capacity does NOT trigger eviction
+    manager.update_track(2, emb2 * 1.5, match_res2)
+    assert manager.get_match(1) is not None  # Track 1 should NOT be evicted yet
+    assert len(manager.tracks) == 2
+
+    # Now add track 3 to trigger eviction of track 1
+    match_res3 = MagicMock()
     emb3 = np.ones(512) * 3
     manager.update_track(3, emb3, match_res3)
 
@@ -159,3 +167,11 @@ def test_track_state_manager():
     assert manager.get_match(1) is None
     assert manager.get_match(2) is not None
     assert manager.get_match(3) is not None
+
+    # 5. Test embedding history is capped to prevent unbounded memory growth
+    state = manager.tracks[2]
+    # Add observations 20 times
+    for i in range(20):
+        state.add_observation(np.ones(512) * i, match_res2)
+    assert len(state.embeddings) <= 10  # Capped at 10
+
