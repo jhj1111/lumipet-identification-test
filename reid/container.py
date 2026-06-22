@@ -13,8 +13,8 @@ def build_extractor(cfg=None):
         from reid.models.extractor.wildlife.model import WildlifeExtractorModel
         return WildlifeExtractorModel(model_path=cfg.extractor_weights, model_name=cfg.model_name, cfg=cfg)
     else:
-        from reid.models.extractor.mega_descriptor.model import ExtractorModel
-        return ExtractorModel(model_path=cfg.extractor_weights, model_name=cfg.model_name, cfg=cfg)
+        from reid.models.extractor.mega_descriptor.model import MegaDesExtractorModel
+        return MegaDesExtractorModel(model_path=cfg.extractor_weights, model_name=cfg.model_name, cfg=cfg)
 
 def build_matcher(cfg=None):
     cfg = cfg or get_config()

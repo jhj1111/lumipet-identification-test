@@ -1,14 +1,16 @@
-import torch
-import torch.nn as nn
-import timm
 import os
 from typing import Any, Optional
 
-from reid.engine.model import BaseModel
-from reid.models.extractor.predict import ExtractorPredictor
-from reid.models.extractor.embedding import EmbeddingStore
+import timm
+import torch
+import torch.nn as nn
 
-class ExtractorModel(BaseModel):
+from reid.models.extractor.embedding import EmbeddingStore
+from reid.models.extractor.model import ExtractorModel
+from reid.models.extractor.predict import ExtractorPredictor
+
+
+class MegaDesExtractorModel(ExtractorModel):
     """
     Feature Extractor Model wrapper using MegaDescriptor.
     """
@@ -19,10 +21,8 @@ class ExtractorModel(BaseModel):
         m_path = model_path or cfg_inst.extractor_weights
         m_name = model_name or cfg_inst.model_name
         
-        super().__init__(m_path, task="reid", cfg=cfg_inst)
-        self.model_name = m_name
+        super().__init__(model_path=m_path, model_name=m_name)
         self._load_model(self.model_path)
-        self.store = EmbeddingStore()
 
     def _load_model(self, weights: str):
         backbone = timm.create_model(self.model_name, pretrained=True, num_classes=0)
@@ -65,11 +65,6 @@ class ExtractorModel(BaseModel):
 
         self.model = CombinedModel(backbone, projection, self.has_custom_weights)
 
-    def _get_predictor(self) -> ExtractorPredictor:
-        predictor = ExtractorPredictor(self.cfg)
-        predictor.setup_model(self.model)
-        return predictor
-
     def _get_trainer(self) -> "ExtractorTrainer":
         from reid.models.extractor.mega_descriptor.train import ExtractorTrainer
         return ExtractorTrainer(self.cfg, model_instance=self)
@@ -77,12 +72,3 @@ class ExtractorModel(BaseModel):
     def _get_validator(self) -> "ExtractorValidator":
         from reid.models.extractor.val import ExtractorValidator
         return ExtractorValidator(self.cfg)
-
-    def register(self, image: Any, label: str, verbose: bool = True):
-        embedding = self.predict(image)
-        self.store.add(embedding, label)
-        if verbose:
-            print(f"Registered cat: {label}")
-
-    def save_db(self):
-        self.store.save()
