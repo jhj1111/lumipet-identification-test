@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 import time
 from reid.core.config import get_config
+from reid.stream.input import StreamLoader
 
 
 class BasePredictor(ABC):
@@ -19,7 +20,7 @@ class BasePredictor(ABC):
         self.model = None
         self.video_writer = None
         self.fps_ema = None
-
+        self.loader: Optional[StreamLoader] = None
 
     def setup_model(self, model: Any) -> None:
         """Bind model to device and configure eval mode."""
@@ -30,6 +31,7 @@ class BasePredictor(ABC):
             self.model.eval()
 
     def __call__(self, source: Any) -> Any:
+        # self.loader = StreamLoader(source)
         return self.predict(source)
 
     def predict(self, source: Any) -> Any:
@@ -67,36 +69,50 @@ class BasePredictor(ABC):
             # Draw overlay and show/save if Results object is returned
             if hasattr(res, 'boxes') and (self.cfg.show or self.cfg.save):
                 annotated_frame = self.draw_overlay(res, frame)
-                if self.cfg.save:
+
+                if self.cfg.show and is_image_file:
+                    cv2.imshow("Lumipet Re-ID", annotated_frame)
+                    print("Press 's' to save, 'q' to quit (no save).")
+                    while True:
+                        key = cv2.waitKey(0) & 0xFF
+                        if key == ord('s'):
+                            cv2.imwrite("output_result.png", annotated_frame)
+                            print("Saved prediction result to: output_result.png")
+                            break
+                        elif key == ord('q'):
+                            break
+                    cv2.destroyAllWindows()
+                elif self.cfg.save:
+                    # show=False but save=True: save unconditionally, no key wait
                     cv2.imwrite("output_result.png", annotated_frame)
                     print("Saved prediction result to: output_result.png")
-                if self.cfg.show:
-                    cv2.imshow("Lumipet Re-ID", annotated_frame)
-                    cv2.waitKey(0)
-                    cv2.destroyAllWindows()
+
             return res
 
-        from reid.stream.input import StreamLoader
-        loader = StreamLoader(source)
+        # from reid.stream.input import StreamLoader
+        self.loader = StreamLoader(source)
 
         # Setup video writer output if save=True
         if self.cfg.save:
-            fps = loader.get_fps()
-            w, h = loader.get_size()
+            fps = self.loader.get_fps()
+            w, h = self.loader.get_size()
             save_path = "output.mp4"
             self.video_writer = cv2.VideoWriter(
                 save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h)
             )
             print(f"Saving results to: {save_path}")
 
+        paused = False
+        last_annotated_frame = None
+
         results_list = []
         try:
-            for path, frame in loader:
+            for path, frame in self.loader:
                 start_time = time.time()
 
                 # 1. Run inference
                 res = self.predict_once(frame)
-                results_list.append(res)
+                if res is not None : results_list.append(res)
 
                 # 2. Draw overlay if results contains bounding boxes
                 if hasattr(res, 'boxes'):
@@ -111,11 +127,31 @@ class BasePredictor(ABC):
                     cv2.putText(annotated_frame, f"FPS: {self.fps_ema:.1f}", (10, 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
+                    last_annotated_frame = annotated_frame
 
                     # Display if show=True
                     if self.cfg.show:
                         cv2.imshow("Lumipet Re-ID", annotated_frame)
-                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                        key = cv2.waitKey(int(self.loader.get_fps())) & 0xFF
+                        if key == ord('q'):
+                            break
+                        elif key == ord('p'):
+                            paused = True
+
+                        # Pause loop: keep window responsive, wait for 'p' (resume) or 'q' (quit)
+                        while paused:
+                            key2 = cv2.waitKey(50) & 0xFF
+                            if key2 == ord('p'):
+                                paused = False
+                            elif key2 == ord('q'):
+                                paused = False
+                                # Use a flag since we can't `break` an outer for-loop from here
+                                results_list_break = True
+                                break
+                        else:
+                            results_list_break = False
+
+                        if 'results_list_break' in dir() and results_list_break:
                             break
 
                     # Write if save=True
@@ -133,7 +169,7 @@ class BasePredictor(ABC):
         """Execute single-item preprocess -> inference -> postprocess pipeline."""
         im_prepped = self.preprocess(im)
         preds = self.inference(im_prepped)
-        results = self.postprocess(preds, im_prepped, im)
+        results = self.postprocess(preds=preds, img=im_prepped, orig_img=im)
         return results
 
     @abstractmethod

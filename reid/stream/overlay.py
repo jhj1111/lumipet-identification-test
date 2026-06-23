@@ -32,8 +32,8 @@ class Renderer:
                 # Draw background box and text
                 (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, 2)
                 # Draw solid background rectangle
-                cv2.rectangle(img, (int(box.x1), int(box.y1) - h - 12), (int(box.x1) + w, int(box.y1)), color, -1)
+                cv2.rectangle(img, (int(box.x1), int(box.y1) + h + 12), (int(box.x1) + w, int(box.y1)), color, -1)
                 # Draw black bold text
-                cv2.putText(img, label, (int(box.x1), int(box.y1) - 6), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, (0, 0, 0), 2)
+                cv2.putText(img, label, (int(box.x1), int(box.y1) + 24), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, (0, 0, 0), 2)
                 
         return img
