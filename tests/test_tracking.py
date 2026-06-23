@@ -15,6 +15,18 @@ def test_config_properties():
     assert config.dev is True
     assert config.track is True
     assert config.tracker == "bytetrack.yaml"
+    
+    # Assert Re-ID specific thresholds and intervals
+    assert config.threshold_candidate == 0.70
+    assert config.threshold_lock == 0.85
+    assert config.threshold_hysteresis == 0.55
+    assert config.candidate_interval == 10
+    assert config.lock_interval == 60
+    
+    # Assert quality filters
+    assert config.min_bbox_width == 32
+    assert config.min_bbox_height == 32
+    assert config.blur_threshold == 10.0
 
 def test_config_cli_overrides():
     test_args = ["predict", "dev=False", "track=False", "tracker=botsort.yaml"]
@@ -68,7 +80,7 @@ def test_yolo_predictor_tracking():
     mock_box = MagicMock()
     mock_box.xyxy = [MagicMock(cpu=MagicMock(return_value=MagicMock(numpy=MagicMock(return_value=[1.0, 2.0, 3.0, 4.0]))))]
     mock_box.conf = [0.9]
-    mock_box.cls = [0]
+    mock_box.cls = np.array([15])
     # Mock box.id to simulate track ID
     mock_id = MagicMock()
     mock_id.__getitem__ = MagicMock(return_value=MagicMock(item=MagicMock(return_value=42)))
@@ -103,7 +115,7 @@ def test_yolo_predictor_tracking():
     mock_box_no_track = MagicMock()
     mock_box_no_track.xyxy = [MagicMock(cpu=MagicMock(return_value=MagicMock(numpy=MagicMock(return_value=[1.0, 2.0, 3.0, 4.0]))))]
     mock_box_no_track.conf = [0.9]
-    mock_box_no_track.cls = [0]
+    mock_box_no_track.cls = np.array([15])
     mock_box_no_track.id = None
     
     mock_result_no_track = MagicMock()
@@ -142,7 +154,7 @@ def test_track_state_manager():
     manager.update_track(1, emb1, match_res1)
     cached = manager.get_match(1)
     assert cached is not None
-    assert np.array_equal(cached[0], emb1)
+    assert np.allclose(cached[0], emb1 / np.linalg.norm(emb1))
     assert cached[1].cat_id == "Nabi"
 
     # 2. Test cache miss
@@ -150,6 +162,7 @@ def test_track_state_manager():
 
     # 3. Test LRU eviction
     match_res2 = MagicMock()
+    match_res2.similarity = 0.85
     emb2 = np.ones(512) * 2
     manager.update_track(2, emb2, match_res2)
     
@@ -160,6 +173,7 @@ def test_track_state_manager():
 
     # Now add track 3 to trigger eviction of track 2 (least recently used)
     match_res3 = MagicMock()
+    match_res3.similarity = 0.85
     emb3 = np.ones(512) * 3
     manager.update_track(3, emb3, match_res3)
 
@@ -173,7 +187,7 @@ def test_track_state_manager():
     # Add observations 20 times
     for i in range(20):
         state.add_observation(np.ones(512) * i, match_res2)
-    assert len(state.embeddings) <= 10  # Capped at 10
+    assert len(state.observations) <= 10  # Capped at 10
 
 
 def test_reid_predictor_caching():
@@ -194,6 +208,7 @@ def test_reid_predictor_caching():
     # Define config
     cfg = Config()
     cfg.track = True
+    cfg.blur_threshold = 0.0
 
     # 1. Instantiate predictor
     predictor = ReIdPredictor(detector, extractor, matcher, cfg)
@@ -278,5 +293,134 @@ def test_renderer_modes():
         mock_put_text.assert_called_with(
             ANY, "Nabi", ANY, ANY, ANY, (0, 0, 0), 2
         )
+
+
+def test_quality_filtering():
+    import numpy as np
+    from reid.pipeline import ReIdPredictor
+    from reid.core.types import Results, BBox, MatchResult
+    from reid.core.config import Config
+    from unittest.mock import MagicMock
+    
+    # Mock dependencies
+    detector = MagicMock()
+    extractor = MagicMock()
+    matcher = MagicMock()
+    
+    extractor.store.get_all.return_value = (np.array([]), [])
+    extractor.cfg.imgsz = 384
+    extractor.predict.return_value = np.ones(512)
+    
+    cfg = Config()
+    cfg.track = True
+    cfg.min_bbox_width = 30
+    cfg.min_bbox_height = 30
+    cfg.blur_threshold = 5.0
+    
+    predictor = ReIdPredictor(detector, extractor, matcher, cfg)
+    
+    # Test 1: Tiny box size filter (20x20)
+    box = BBox(x1=0, y1=0, x2=20, y2=20, track_id=8)
+    orig_img = np.zeros((100, 100, 3), dtype=np.uint8)
+    results = Results(orig_img=orig_img, path="", boxes=[box])
+    detector.predict.return_value = results
+    
+    res = predictor.inference(orig_img)
+    assert res.match_results[0].cat_id == "Unknown"
+    assert res.match_results[0].similarity == 0.0
+    assert extractor.predict.call_count == 1 # only init call
+    
+    # Test 2: Blurry box (Laplacian var ~ 0)
+    blurry_box = BBox(x1=0, y1=0, x2=50, y2=50, track_id=9)
+    results_blur = Results(orig_img=orig_img, path="", boxes=[blurry_box])
+    detector.predict.return_value = results_blur
+    
+    res_blur = predictor.inference(orig_img)
+    assert res_blur.match_results[0].cat_id == "Unknown"
+    assert res_blur.match_results[0].similarity == 0.0
+    assert extractor.predict.call_count == 1
+
+def test_state_machine_transitions():
+    from reid.pipeline import ReIdPredictor
+    from reid.core.types import Results, BBox, MatchResult
+    from reid.core.config import Config
+    from unittest.mock import MagicMock
+    import numpy as np
+    
+    detector = MagicMock()
+    extractor = MagicMock()
+    matcher = MagicMock()
+    
+    extractor.store.get_all.return_value = (np.array([]), [])
+    extractor.cfg.imgsz = 384
+    extractor.predict.return_value = np.ones(512)
+    
+    cfg = Config()
+    cfg.track = True
+    cfg.threshold_candidate = 0.70
+    cfg.threshold_lock = 0.85
+    cfg.threshold_hysteresis = 0.55
+    cfg.candidate_interval = 2
+    cfg.lock_interval = 5
+    cfg.blur_threshold = 0.0 # disable blur check for test
+    
+    predictor = ReIdPredictor(detector, extractor, matcher, cfg)
+    
+    # Frame 1: Match with sim=0.60 (stays Unknown)
+    box = BBox(x1=0, y1=0, x2=50, y2=50, track_id=12)
+    img = np.zeros((100, 100, 3), dtype=np.uint8)
+    detector.predict.return_value = Results(orig_img=img, path="", boxes=[box])
+    matcher.match.return_value = MatchResult(cat_id="Nabi", similarity=0.60)
+    
+    predictor.inference(img)
+    track_state = predictor.track_state_manager.tracks[12]
+    assert track_state.state == "Unknown"
+    
+    # Frame 2: Match with sim=0.75 (transitions to Candidate)
+    matcher.match.return_value = MatchResult(cat_id="Nabi", similarity=0.75)
+    predictor.inference(img)
+    assert track_state.state == "Candidate"
+    
+    # Frame 3: Candidate cache hit (does not match, candidate_interval is 2)
+    matcher.match.reset_mock()
+    predictor.inference(img)
+    matcher.match.assert_not_called()
+    
+    # Frame 4: Forced re-match on Candidate (sim=0.90 -> transitions to Locked)
+    matcher.match.return_value = MatchResult(cat_id="Nabi", similarity=0.90)
+    predictor.inference(img)
+    assert track_state.state == "Locked"
+    
+    # Frame 5: Locked cache hit
+    matcher.match.reset_mock()
+    predictor.inference(img)
+    matcher.match.assert_not_called()
+
+def test_smart_eviction():
+    from reid.core.tracker import TrackState
+    from reid.core.types import MatchResult
+    import numpy as np
+    
+    state = TrackState(track_id=1)
+    # Fill observations with index 0..9
+    # Set first 7 similarities low (0.5), last 3 similarity higher (0.8) to simulate recent ones
+    for i in range(10):
+        sim = 0.8 if i >= 7 else 0.5
+        state.add_observation(np.ones(512) * i, MatchResult(cat_id="A", similarity=sim))
+        
+    assert len(state.observations) == 10
+    
+    # Insert new observation with similarity 0.7
+    # It should evict one of the 0..6 entries (lowest similarity = 0.5), keeping the recent 3
+    new_emb = np.ones(512) * 99
+    state.add_observation(new_emb, MatchResult(cat_id="A", similarity=0.7))
+    
+    assert len(state.observations) == 10
+    # Verify one entry of similarity 0.5 was evicted, and 0.7 is added
+    similarities = [obs["similarity"] for obs in state.observations]
+    assert 0.7 in similarities
+    assert similarities.count(0.5) == 6
+    assert similarities.count(0.8) == 3
+
 
 
