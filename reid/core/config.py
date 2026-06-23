@@ -21,6 +21,18 @@ class Config:
     matcher_type: str = "faiss"  # "faiss" or "knn"
     threshold: float = 0.7
     k: int = 2
+    
+    # Tracking & Hysteresis Settings
+    threshold_candidate: float = 0.70
+    threshold_lock: float = 0.85
+    threshold_hysteresis: float = 0.55
+    candidate_interval: int = 10
+    lock_interval: int = 60
+    
+    # Image Quality Filters
+    min_bbox_width: int = 32
+    min_bbox_height: int = 32
+    blur_threshold: float = 10.0
 
     # Train, Val Settings
     batch_size: int = 16

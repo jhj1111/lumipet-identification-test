@@ -2,10 +2,11 @@
 
 # Model Weights
 detector_weights: "weights/yolov8n.pt"
-extractor_weights: "weights/best_projection.pth"
+extractor_weights: "weights/best_weight_hct.pth"
 
 # Model Settings
 model_name: "hf-hub:BVRA/MegaDescriptor-L-384"
+extractor_type: "wildlife"  # "mega_descriptor" or "wildlife"
 imgsz: 384
 conf: 0.25
 
@@ -13,17 +14,29 @@ conf: 0.25
 matcher_type: "faiss"  # "faiss" or "knn"
 threshold: 0.7
 k: 2
+threshold_candidate: 0.70
+threshold_lock: 0.85
+threshold_hysteresis: 0.55
+candidate_interval: 10
+lock_interval: 60
+min_bbox_width: 32
+min_bbox_height: 32
+blur_threshold: 10.0
+show: True
 
 # DB Paths
-db_path: "embeddings/db.npz"
-dataset_path: "datasets/heellostreetcat-individuals"
+db_path: "embeddings/white_db.npz"
+# dataset_path: "/content/datasets/cat_individuals_dataset"
+dataset_path: "/content/datasets/heellostreetcat-individuals"
 
-# Run Settings
+# Device & Run Settings
 dev: True
 track: True
 tracker: "bytetrack.yaml"
-device: "cuda"
+device: "cuda"  # set to "cpu" if no GPU
 
 # Train, Val Settings
-batch_size: 16
+batch_size: 8
 test_size: 0.2
+lr: 0.00005
+epochs: 5
