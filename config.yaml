@@ -25,7 +25,7 @@ blur_threshold: 10.0
 show: True
 
 # DB Paths
-db_path: "embeddings/white_db.npz"
+db_path: "embeddings/white_db_test.npz"
 # dataset_path: "/content/datasets/cat_individuals_dataset"
 dataset_path: "/content/datasets/heellostreetcat-individuals"
 

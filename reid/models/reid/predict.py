@@ -1,8 +1,6 @@
-from typing import Any, Optional, Tuple, List
+from typing import Any, Optional
 import numpy as np
-import cv2
 from reid.engine.predictor import BasePredictor
-from reid.engine.model import BaseModel
 from reid.core.types import Results, MatchResult
 from reid.core.tracker import TrackStateManager, TrackState
 from reid.core.filters import ImageQualityFilter
@@ -125,18 +123,3 @@ class ReIdPredictor(BasePredictor):
     def postprocess(self, preds: Any, img: Any, orig_img: Any) -> Results:
         return preds
 
-class ReIdModel(BaseModel):
-    """
-    Full Re-ID Pipeline Model.
-    """
-    def __init__(self, detector: Any, extractor: Any, matcher: Any, cfg: Optional[Any] = None) -> None:
-        super().__init__(task="reid_pipeline", cfg=cfg)
-        self.detector = detector
-        self.extractor = extractor
-        self.matcher = matcher
-
-    def _load_model(self, weights: str) -> None:
-        pass
-
-    def _get_predictor(self) -> ReIdPredictor:
-        return ReIdPredictor(self.detector, self.extractor, self.matcher, self.cfg)

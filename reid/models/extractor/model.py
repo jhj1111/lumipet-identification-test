@@ -1,5 +1,7 @@
 from abc import abstractmethod
 from typing import Any, Optional
+import os
+from tqdm import tqdm
 
 from reid.engine.model import BaseModel
 from reid.engine.trainer import BaseTrainer
@@ -49,7 +51,31 @@ class ExtractorModel(BaseModel):
         """Return the validation wrapper."""
         pass
 
-    def register(self, image: Any, label: str, verbose: bool = True) -> None:
+    def register(self, source: str, label: str, verbose: Optional[bool] = None) -> None:
+        """Extract features and save to embedding store."""
+        if not os.path.exists(source):
+            print(f"Error: Register source {source} does not exist.")
+            return
+
+        if os.path.isdir(source):
+            print(f"Bulk registering from directory: {source}")
+            verbose = verbose if verbose else False
+            labels = [d for d in os.listdir(source) if os.path.isdir(os.path.join(source, d))]
+            for s_label in tqdm(labels):
+                label_dir = os.path.join(source, s_label)
+                for root, _, files in os.walk(label_dir):
+                    for f in files:
+                        if f.lower().endswith(('.png', '.jpg', '.jpeg')):
+                            self._register(image=os.path.join(root, f), label=s_label, verbose=verbose)
+        else:
+            print(f"Registering single image: {source} as {label}")
+            verbose = verbose if verbose else True
+            self._register(image=source, label=label, verbose=verbose)
+
+        self.save_db()
+        print("Registration completed and database saved.")
+
+    def _register(self, image: Any, label: str, verbose: bool = True) -> None:
         """Extract features and save to embedding store."""
         embedding = self.predict(image)
         self.store.add(embedding, label)

@@ -1,7 +1,7 @@
 import numpy as np
 import faiss
 from typing import List
-from reid.models.matcher.base import BaseMatcher
+from reid.models.matcher.model import BaseMatcher
 from reid.core.types import MatchResult
 
 class FaissMatcher(BaseMatcher):

@@ -1,5 +1,5 @@
 from reid.core.config import get_config
-from reid.models.yolo.model import YoloModel
+from reid.models import YoloModel
 from reid.models.matcher.knn import KnnMatcher
 from reid.models.matcher.faiss import FaissMatcher
 

@@ -1,10 +1,8 @@
 import sys
-import os
-from tqdm import tqdm
 
 from reid.core.config import get_config
 from reid.container import build_detector, build_extractor, build_matcher
-from reid.pipeline import ReIdModel
+from reid.models import ReIdModel
 
 def main() -> None:
     # 1. Load config and handle CLI overrides (key=value)
@@ -27,29 +25,10 @@ def main() -> None:
     pipeline = ReIdModel(detector, extractor, matcher, cfg=cfg)
 
     if cfg.mode == "predict":
-        predictor = pipeline._get_predictor()
-        predictor(cfg.source)
+        pipeline.predict(source=cfg.source)
         
     elif cfg.mode == "register":
-        source_str = str(cfg.source)
-        if not os.path.exists(source_str):
-            print(f"Error: Register source {source_str} does not exist.")
-            return
-
-        if os.path.isdir(source_str):
-            print(f"Bulk registering from directory: {source_str}")
-            labels = [d for d in os.listdir(source_str) if os.path.isdir(os.path.join(source_str, d))]
-            for s_label in tqdm(labels):
-                label_dir = os.path.join(source_str, s_label)
-                for root, _, files in os.walk(label_dir):
-                    for f in files:
-                        if f.lower().endswith(('.png', '.jpg', '.jpeg')):
-                            extractor.register(os.path.join(root, f), s_label, verbose=False)
-        else:
-            print(f"Registering single image: {source_str} as {cfg.label}")
-            extractor.register(source_str, cfg.label)
-        extractor.save_db()
-        print("Registration completed and database saved.")
+        extractor.register(source=str(cfg.source), label=cfg.label)
 
     elif cfg.mode == "train":
         extractor.train()

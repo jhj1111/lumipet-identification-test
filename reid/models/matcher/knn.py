@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 from typing import List
-from reid.models.matcher.base import BaseMatcher
+from reid.models.matcher.model import BaseMatcher
 from reid.core.types import MatchResult
 
 class KnnMatcher(BaseMatcher):

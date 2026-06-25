@@ -1,4 +1,3 @@
-import pytest
 import sys
 import tempfile
 import os
@@ -191,7 +190,7 @@ def test_track_state_manager():
 
 
 def test_reid_predictor_caching():
-    from reid.pipeline import ReIdPredictor
+    from reid.models.reid.predict import ReIdPredictor
     from reid.core.types import Results, BBox, MatchResult
     from reid.core.config import Config
     from unittest.mock import MagicMock
@@ -297,8 +296,8 @@ def test_renderer_modes():
 
 def test_quality_filtering():
     import numpy as np
-    from reid.pipeline import ReIdPredictor
-    from reid.core.types import Results, BBox, MatchResult
+    from reid.models.reid.predict import ReIdPredictor
+    from reid.core.types import Results, BBox
     from reid.core.config import Config
     from unittest.mock import MagicMock
     
@@ -341,7 +340,7 @@ def test_quality_filtering():
     assert extractor.predict.call_count == 1
 
 def test_state_machine_transitions():
-    from reid.pipeline import ReIdPredictor
+    from reid.models.reid.predict import ReIdPredictor
     from reid.core.types import Results, BBox, MatchResult
     from reid.core.config import Config
     from unittest.mock import MagicMock

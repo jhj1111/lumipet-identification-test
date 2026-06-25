@@ -5,7 +5,7 @@ import torch.optim as optim
 from reid.engine.trainer import BaseTrainer
 from reid.data.loader import CatDataLoader
 
-class ExtractorTrainer(BaseTrainer):
+class MegaDesExtractorTrainer(BaseTrainer):
     """
     Trainer implementation for ExtractorModel projection layer fine-tuning.
     """

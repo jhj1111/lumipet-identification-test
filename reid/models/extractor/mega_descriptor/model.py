@@ -66,8 +66,8 @@ class MegaDesExtractorModel(ExtractorModel):
         self.model = CombinedModel(backbone, projection, self.has_custom_weights)
 
     def _get_trainer(self) -> "ExtractorTrainer":
-        from reid.models.extractor.mega_descriptor.train import ExtractorTrainer
-        return ExtractorTrainer(self.cfg, model_instance=self)
+        from reid.models.extractor.mega_descriptor.train import MegaDesExtractorTrainer
+        return MegaDesExtractorTrainer(self.cfg, model_instance=self)
 
     def _get_validator(self) -> "ExtractorValidator":
         from reid.models.extractor.val import ExtractorValidator
