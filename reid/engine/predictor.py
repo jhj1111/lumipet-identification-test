@@ -6,6 +6,7 @@ import cv2
 import time
 from reid.core.config import get_config
 from reid.stream.input import StreamLoader
+from reid.utils.profiler import PipelineProfiler
 
 
 class BasePredictor(ABC):
@@ -21,6 +22,7 @@ class BasePredictor(ABC):
         self.video_writer = None
         self.fps_ema = None
         self.loader: Optional[StreamLoader] = None
+        self.profiler = PipelineProfiler(enabled=getattr(self.cfg, "dev", True))
 
     def setup_model(self, model: Any) -> None:
         """Bind model to device and configure eval mode."""
@@ -38,10 +40,25 @@ class BasePredictor(ABC):
         """Perform predictions on single input or stream loader sources."""
         import os
 
+        # Reset state/history for this specific run
+        self.video_writer = None
+        self.fps_ema = None
+        if self.profiler:
+            self.profiler.history = []
+            self.profiler.current_frame = {stage: 0.0 for stage in self.profiler.stages}
+            self.profiler.current_frame["total"] = 0.0
+
+        # Identify source_name and timestamp
+        source_str = str(source)
+        if isinstance(source, int):
+            source_name = f"webcam_{source}"
+        else:
+            source_name = os.path.splitext(os.path.basename(source_str))[0]
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+
         # Reset cache/state if the subclass supports it (e.g. ReIdPredictor)
         if hasattr(self, "reset"):
             self.reset()
-
 
         # Check if the source is a single image file path
         is_image_file = False
@@ -89,7 +106,6 @@ class BasePredictor(ABC):
 
             return res
 
-        # from reid.stream.input import StreamLoader
         self.loader = StreamLoader(source)
 
         # Setup video writer output if save=True
@@ -103,31 +119,37 @@ class BasePredictor(ABC):
             print(f"Saving results to: {save_path}")
 
         paused = False
-        last_annotated_frame = None
-
         results_list = []
+        results_list_break = False
+
         try:
             for path, frame in self.loader:
-                start_time = time.time()
+                start_time = time.perf_counter()
 
                 # 1. Run inference
                 res = self.predict_once(frame)
-                if res is not None : results_list.append(res)
+                if res is not None:
+                    results_list.append(res)
 
-                # 2. Draw overlay if results contains bounding boxes
+                annotated_frame = None
                 if hasattr(res, 'boxes'):
                     annotated_frame = self.draw_overlay(res)
 
-                    # Add FPS count on top (smoothed with EMA)
-                    current_fps = 1.0 / max(time.time() - start_time, 1e-6)
+                # 2. Record processing execution time (excludes display waits and I/O)
+                total_time_ms = (time.perf_counter() - start_time) * 1000.0
+                self.profiler.commit_frame(total_time_ms)
+
+                # 3. Post-processing visualization, saving, and GUI updates
+                if annotated_frame is not None:
+                    # Calculate FPS based on monotonic timers and actual processing time
+                    current_fps = 1000.0 / max(total_time_ms, 1e-3)
                     if self.fps_ema is None:
                         self.fps_ema = current_fps
                     else:
                         self.fps_ema = 0.9 * self.fps_ema + 0.1 * current_fps
+
                     cv2.putText(annotated_frame, f"FPS: {self.fps_ema:.1f}", (10, 30),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-
-                    last_annotated_frame = annotated_frame
 
                     # Display if show=True
                     if self.cfg.show:
@@ -145,23 +167,27 @@ class BasePredictor(ABC):
                                 paused = False
                             elif key2 == ord('q'):
                                 paused = False
-                                # Use a flag since we can't `break` an outer for-loop from here
                                 results_list_break = True
                                 break
-                        else:
-                            results_list_break = False
 
-                        if 'results_list_break' in dir() and results_list_break:
+                        if results_list_break:
                             break
 
                     # Write if save=True
                     if self.video_writer:
                         self.video_writer.write(annotated_frame)
+
         finally:
+            # Safe resource cleanup and reference deletion
             if self.video_writer:
                 self.video_writer.release()
+                self.video_writer = None
             if self.cfg.show:
                 cv2.destroyAllWindows()
+            if self.profiler and self.profiler.enabled:
+                print(self.profiler.get_summary_string())
+                self.profiler.save_csv(source_name, timestamp)
+
 
         return results_list
 
