@@ -1,7 +1,7 @@
 import yaml
 import sys
 from dataclasses import dataclass, asdict
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Union
 from pathlib import Path
 
 @dataclass
@@ -28,6 +28,7 @@ class Config:
     threshold_hysteresis: float = 0.55
     candidate_interval: int = 10
     lock_interval: int = 60
+    unknown_interval: int = 10
     
     # Image Quality Filters
     min_bbox_width: int = 32
@@ -57,7 +58,7 @@ class Config:
     
     # CLI Task Controls
     mode: str = "predict"
-    source: str = "0"
+    source: Union[str, int] = "0"
     label: str = "Unknown"
     skip_detector: bool = False
     

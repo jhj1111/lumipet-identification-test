@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, Union
 from pathlib import Path
 import numpy as np
 import cv2
@@ -34,7 +34,7 @@ class BasePredictor(ABC):
         # self.loader = StreamLoader(source)
         return self.predict(source)
 
-    def predict(self, source: Any) -> Any:
+    def predict(self, source: Union[str, Path, int]) -> Any:
         """Perform predictions on single input or stream loader sources."""
         import os
 
@@ -68,7 +68,7 @@ class BasePredictor(ABC):
 
             # Draw overlay and show/save if Results object is returned
             if hasattr(res, 'boxes') and (self.cfg.show or self.cfg.save):
-                annotated_frame = self.draw_overlay(res, frame)
+                annotated_frame = self.draw_overlay(res)
 
                 if self.cfg.show and is_image_file:
                     cv2.imshow("Lumipet Re-ID", annotated_frame)
@@ -116,7 +116,7 @@ class BasePredictor(ABC):
 
                 # 2. Draw overlay if results contains bounding boxes
                 if hasattr(res, 'boxes'):
-                    annotated_frame = self.draw_overlay(res, frame)
+                    annotated_frame = self.draw_overlay(res)
 
                     # Add FPS count on top (smoothed with EMA)
                     current_fps = 1.0 / max(time.time() - start_time, 1e-6)
@@ -184,7 +184,7 @@ class BasePredictor(ABC):
     def postprocess(self, preds: Any, img: Any, orig_img: Any) -> Any:
         pass
 
-    def draw_overlay(self, results: Any, frame: np.ndarray) -> np.ndarray:
+    def draw_overlay(self, results: Any) -> np.ndarray:
         """Render detections and classifications using overlay Renderer."""
         from reid.stream.overlay import Renderer
         dev_mode = getattr(self.cfg, 'dev', True)

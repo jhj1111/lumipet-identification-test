@@ -1,12 +1,10 @@
 import os
-from typing import Any, Optional
+from typing import Optional
 
 import timm
 import torch
 
-from reid.models.extractor.embedding import EmbeddingStore
 from reid.models.extractor.model import ExtractorModel
-from reid.models.extractor.predict import ExtractorPredictor
 
 
 class WildlifeExtractorModel(ExtractorModel):
@@ -49,7 +47,7 @@ class WildlifeExtractorModel(ExtractorModel):
         if weights and os.path.exists(weights):
             print(f"Loading weights from {weights}")
             try:
-                state_dict = torch.load(weights, map_location="cpu")
+                state_dict = torch.load(weights, map_location=self.cfg.device)
                 self.model.load_state_dict(state_dict)
             except Exception as e:
                 print(f"Error loading weights: {e}")

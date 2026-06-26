@@ -1,13 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import List, Tuple
 import numpy as np
+
+from reid.core.config import get_config
 from reid.core.types import MatchResult
 
 class BaseMatcher(ABC):
     """
     Abstract Base Class for Embedding Matchers.
     """
-    def __init__(self, threshold: float = 0.7):
+    def __init__(self, threshold: float = 0.7, cfg = None):
+        self.cfg = cfg or get_config()
         self.threshold = threshold
         self.labels = []
         self.embeddings = None

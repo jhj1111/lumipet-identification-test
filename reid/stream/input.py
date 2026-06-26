@@ -7,7 +7,7 @@ class StreamLoader:
     """
     Abstracts input sources: Camera (index), Video file, or Directory/Image.
     """
-    def __init__(self, source: Union[str, int] = 0):
+    def __init__(self, source: Union[str, Path, int] = 0):
         self.source = source
         self.cap = None
         self.is_video = False
@@ -19,18 +19,18 @@ class StreamLoader:
     def _setup_source(self):
         source_str = str(self.source)
         if source_str.isdigit():
-            self.cap = cv2.VideoCapture(int(self.source))
+            self.cap = cv2.VideoCapture(int(source_str))
             self.is_video = True
         elif os.path.isfile(self.source):
             if source_str.lower().endswith(('.mp4', '.avi', '.mov', '.mkv')):
-                self.cap = cv2.VideoCapture(self.source)
+                self.cap = cv2.VideoCapture(source_str)
                 self.is_video = True
             else:
                 self.image_files = [self.source]
         elif os.path.isdir(self.source):
             self.is_dir = True
             self.image_files = sorted([
-                os.path.join(self.source, f) for f in os.listdir(self.source)
+                os.path.join(source_str, f) for f in os.listdir(source_str)
                 if f.lower().endswith(('.png', '.jpg', '.jpeg'))
             ])
 

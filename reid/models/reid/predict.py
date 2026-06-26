@@ -25,8 +25,9 @@ class ReIdPredictor(BasePredictor):
         self.th_candidate = getattr(self.cfg, "threshold_candidate", 0.70)
         self.th_lock = getattr(self.cfg, "threshold_lock", 0.85)
         self.th_hysteresis = getattr(self.cfg, "threshold_hysteresis", 0.55)
-        self.candidate_interval = getattr(self.cfg, "candidate_interval", 10)
+        self.candidate_interval = getattr(self.cfg, "candidate_interval", 20)
         self.lock_interval = getattr(self.cfg, "lock_interval", 60)
+        self.unknown_interval = getattr(self.cfg, "unknown_interval", 10)
         
         # Initialize extractor output dimension
         imgsz = extractor.cfg.imgsz
@@ -83,7 +84,7 @@ class ReIdPredictor(BasePredictor):
                 if track_id not in self.track_state_manager.tracks:
                     self.track_state_manager.tracks[track_id] = TrackState(track_id)
                 state_obj = self.track_state_manager.tracks[track_id]
-                run_matching = state_obj.should_match(self.candidate_interval, self.lock_interval)
+                run_matching = state_obj.should_match(self.candidate_interval, self.lock_interval, self.unknown_interval)
             
             if not run_matching and state_obj is not None and state_obj.match_result is not None:
                 # Cache hit: Retrieve mean embedding and reuse match result

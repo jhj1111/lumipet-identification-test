@@ -12,10 +12,10 @@ class TrackState:
         self.state = "Unknown"  # "Unknown", "Candidate", "Locked"
         self.last_match_frame = -9999
         
-    def should_match(self, candidate_interval: int, lock_interval: int) -> bool:
+    def should_match(self, candidate_interval: int, lock_interval: int, unknown_interval: int) -> bool:
         """Determine if a re-matching step is required."""
         if self.state == "Unknown":
-            return True
+            return (self.frame_count - self.last_match_frame) >= unknown_interval
         elif self.state == "Candidate":
             return (self.frame_count - self.last_match_frame) >= candidate_interval
         elif self.state == "Locked":
