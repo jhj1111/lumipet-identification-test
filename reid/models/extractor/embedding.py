@@ -17,6 +17,7 @@ class EmbeddingStore:
     def add(self, embedding: np.ndarray, label: str):
         """Add a new embedding and label to the store."""
         # Ensure embedding is 2D (1, D)
+        if self.embeddings and (self.embeddings == embedding).any(): return
         if embedding.ndim == 1:
             embedding = embedding.reshape(1, -1)
         self.embeddings.append(embedding)

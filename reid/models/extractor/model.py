@@ -77,6 +77,7 @@ class ExtractorModel(BaseModel):
 
     def _register(self, image: Any, label: str, verbose: bool = True) -> None:
         """Extract features and save to embedding store."""
+        self.cfg.show = False
         embedding = self.predict(image)
         self.store.add(embedding, label)
         if verbose:
