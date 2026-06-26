@@ -37,6 +37,9 @@ class ExtractorModel(BaseModel):
 
     def _get_predictor(self) -> ExtractorPredictor:
         """Return the shared predictor class."""
+        if getattr(self.cfg, "fp16", False) and "cuda" in str(self.cfg.device):
+            if hasattr(self.model, "half"):
+                self.model.half()
         predictor = ExtractorPredictor(self.cfg)
         predictor.setup_model(self.model)
         return predictor

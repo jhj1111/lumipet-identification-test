@@ -28,6 +28,12 @@ class BaseModel(ABC):
             self.predictor = self._get_predictor()
         return self.predictor(source)
 
+    def predict_batch(self, source: Any) -> Any:
+        """Perform batch inference using the assigned predictor."""
+        if self.predictor is None:
+            self.predictor = self._get_predictor()
+        return self.predictor.predict_batch(source)
+
     @abstractmethod
     def _get_predictor(self):
         """Return an instance of a task-specific Predictor."""
