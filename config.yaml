@@ -2,7 +2,8 @@
 
 # Model Weights
 detector_weights: "weights/yolov8n.pt"
-extractor_weights: "weights/best_weight_hct.pth"
+#extractor_weights: "weights/best_weight_hct.pth"
+extractor_weights: "weights/best_weight_ci_01.pth"
 
 # Model Settings
 model_name: "hf-hub:BVRA/MegaDescriptor-L-384"
@@ -17,23 +18,27 @@ k: 2
 threshold_candidate: 0.70
 threshold_lock: 0.85
 threshold_hysteresis: 0.55
-candidate_interval: 10
+candidate_interval: 20
 lock_interval: 60
+unknown_interval: 10
 min_bbox_width: 32
 min_bbox_height: 32
 blur_threshold: 10.0
 show: True
 
 # DB Paths
-db_path: "embeddings/white_db_test.npz"
+db_path: "embeddings/cream_heroes_db.npz"
 # dataset_path: "/content/datasets/cat_individuals_dataset"
-dataset_path: "/content/datasets/heellostreetcat-individuals"
+#dataset_path: "/content/datasets/heellostreetcat-individuals"
+dataset_path: "datasets/cream_heroes"
 
 # Device & Run Settings
 dev: True
 track: True
 tracker: "bytetrack.yaml"
 device: "cuda"  # set to "cpu" if no GPU
+fp16: True
+
 
 # Train, Val Settings
 batch_size: 8

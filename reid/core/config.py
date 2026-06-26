@@ -55,6 +55,8 @@ class Config:
     dev: bool = True
     track: bool = True
     tracker: str = "bytetrack.yaml"
+    fp16: bool = True
+
     
     # CLI Task Controls
     mode: str = "predict"

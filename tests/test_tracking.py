@@ -11,9 +11,11 @@ def test_config_properties():
     assert hasattr(config, "dev")
     assert hasattr(config, "track")
     assert hasattr(config, "tracker")
+    assert hasattr(config, "fp16")
     assert config.dev is True
     assert config.track is True
     assert config.tracker == "bytetrack.yaml"
+    assert config.fp16 is True
     
     # Assert Re-ID specific thresholds and intervals
     assert config.threshold_candidate == 0.70
@@ -222,11 +224,12 @@ def test_reid_predictor_caching():
 
     # Mock extractor and matcher output
     extractor.predict.return_value = np.ones(512)
+    extractor.predict_batch = MagicMock(side_effect=lambda crops: np.ones((len(crops), 512)))
     matcher.match.return_value = MatchResult(cat_id="Nabi", similarity=0.95)
 
     # Run 1st inference (cache miss)
     res1 = predictor.inference(orig_img)
-    assert extractor.predict.call_count == init_calls + 1
+    assert extractor.predict_batch.call_count == 1
     assert matcher.match.call_count == 1
     assert res1.match_results[0].cat_id == "Nabi"
 
@@ -237,8 +240,8 @@ def test_reid_predictor_caching():
 
     # Run 2nd inference (cache hit)
     res2 = predictor.inference(orig_img)
-    # Call count should still be init_calls + 1 (skipped on 2nd run due to cache hit)
-    assert extractor.predict.call_count == init_calls + 1
+    # Call count should still be 1 (skipped on 2nd run due to cache hit)
+    assert extractor.predict_batch.call_count == 1
     assert matcher.match.call_count == 1
     assert res2.match_results[0].cat_id == "Nabi"
 
@@ -246,7 +249,7 @@ def test_reid_predictor_caching():
     predictor.reset()
     res3 = predictor.inference(orig_img)
     # Call count should increase (since cache was cleared)
-    assert extractor.predict.call_count == init_calls + 2
+    assert extractor.predict_batch.call_count == 2
     assert matcher.match.call_count == 2
 
 
@@ -361,6 +364,7 @@ def test_state_machine_transitions():
     cfg.threshold_hysteresis = 0.55
     cfg.candidate_interval = 2
     cfg.lock_interval = 5
+    cfg.unknown_interval = 1
     cfg.blur_threshold = 0.0 # disable blur check for test
     
     predictor = ReIdPredictor(detector, extractor, matcher, cfg)
