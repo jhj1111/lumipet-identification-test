@@ -1,0 +1,43 @@
+# Default configuration for Lumipet Re-ID
+
+# Model Weights
+detector_weights: "weights/yolo26n.pt"
+extractor_weights: "weights/wildlife.pth"
+
+# Model Settings
+model_name: "hf-hub:BVRA/MegaDescriptor-L-384"
+extractor_type: "wildlife"  # "mega_descriptor" or "wildlife"
+imgsz: 384
+conf: 0.25
+
+# Re-ID Settings
+matcher_type: "faiss"  # "faiss" or "knn"
+threshold: 0.7
+k: 1
+threshold_candidate: 0.70
+threshold_lock: 0.85
+threshold_hysteresis: 0.55
+candidate_interval: 20
+lock_interval: 60
+unknown_interval: 10
+min_bbox_width: 32
+min_bbox_height: 32
+blur_threshold: 10.0
+
+# DB Paths
+db_path: "embeddings/db.npz"
+#dataset_path: "datasets/"
+
+# Device & Run Settings
+dev: False
+show: True
+track: True
+tracker: "cfg/trackers/fasttrack.yaml"
+device: "cuda"  # set to "cpu" if no GPU
+fp16: True
+
+# Train, Val Settings
+batch_size: 8
+test_size: 0.2
+lr: 0.00005
+epochs: 5

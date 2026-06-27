@@ -4,6 +4,9 @@ from dataclasses import dataclass, asdict
 from typing import Any, Dict, Optional, List, Union
 from pathlib import Path
 
+from reid.utils import get_cfg_path
+
+
 @dataclass
 class Config:
     # Model Paths
@@ -54,7 +57,7 @@ class Config:
     show: bool = True
     dev: bool = True
     track: bool = True
-    tracker: str = "bytetrack.yaml"
+    tracker: str = "cfg/trackers/bytetrack.yaml"
     fp16: bool = True
 
     
@@ -68,7 +71,7 @@ class Config:
         pass
 
     @classmethod
-    def load(cls, yaml_path: Optional[str] = "config.yaml") -> "Config":
+    def load(cls, yaml_path: Union[str, Path]) -> "Config":
         """Load config from YAML and override with CLI arguments."""
         config = cls()
         
@@ -123,8 +126,9 @@ class Config:
 
 _config = None
 
-def get_config() -> Config:
+def get_config(yaml_path: Union[str, Path, None] = None) -> Config:
     global _config
+    yaml_path = get_cfg_path(yaml_path)
     if _config is None:
-        _config = Config.load()
+        _config = Config.load(yaml_path=yaml_path)
     return _config
