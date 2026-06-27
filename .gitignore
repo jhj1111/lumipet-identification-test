@@ -700,3 +700,9 @@ FodyWeavers.xsd
 extra/
 datasets/*
 embeddings/*
+/results/
+/config.yaml
+weights/*
+!weights/wildlife.pth
+!weights/mega_descriptor.pth
+!weights/yolo*.pt
