@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Union, Optional
+from .hashing import calculate_md5
 
 FILE = Path(__file__).resolve() # reid/utils
 ROOT = FILE.parents[1]  # reid
