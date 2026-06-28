@@ -44,6 +44,9 @@ def test_wildlife_flow():
         os.remove(cfg.extractor_weights)
     if os.path.exists(cfg.db_path):
         os.remove(cfg.db_path)
+    db_db_path = cfg.db_path.replace(".npz", ".db")
+    if os.path.exists(db_db_path):
+        os.remove(db_db_path)
     print("All tests passed successfully!")
 
 if __name__ == "__main__":

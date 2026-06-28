@@ -14,7 +14,7 @@ def test_config_properties():
     assert hasattr(config, "fp16")
     assert config.dev is True
     assert config.track is True
-    assert config.tracker == "bytetrack.yaml"
+    assert config.tracker == "cfg/trackers/bytetrack.yaml"
     assert config.fp16 is True
     
     # Assert Re-ID specific thresholds and intervals
@@ -98,12 +98,15 @@ def test_yolo_predictor_tracking():
     # Pass a numpy array so that it executes single-frame inference
     results = predictor(dummy_img_frame)
     
+    from reid.utils import get_cfg_path
+    expected_tracker = str(get_cfg_path("bytetrack.yaml"))
+    
     mock_model.track.assert_called_once_with(
         dummy_img_frame,
         conf=0.25,
         iou=0.7,
         persist=True,
-        tracker="bytetrack.yaml",
+        tracker=expected_tracker,
         verbose=False
     )
     assert len(results.boxes) == 1

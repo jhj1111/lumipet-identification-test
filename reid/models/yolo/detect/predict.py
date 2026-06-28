@@ -13,7 +13,7 @@ class YoloPredictor(BasePredictor):
     def inference(self, im: Any) -> Any:
         if self.cfg.track:
             tracker = get_cfg_path(self.cfg.tracker)
-            self.cfg.tracker = tracker if tracker else "bytetrack.yaml"
+            self.cfg.tracker = str(tracker) if tracker else "bytetrack.yaml"
             return self.model.track(
                 im,
                 conf=self.cfg.conf,
